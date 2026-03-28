@@ -1,0 +1,25 @@
+{
+  "rules": {
+    "chat": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "live_events": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "rooms": {
+      ".read": "auth != null",
+      "$gameType": {
+        "$roomId": {
+          ".write": "auth != null",
+          "players": {
+            "$uid": {
+              ".write": "auth != null && $uid === auth.uid"
+            }
+          }
+        }
+      }
+    }
+  }
+}

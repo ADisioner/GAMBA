@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Проверка прав администратора через UID документа 'Aboba'
+    function isAdmin() {
+      return request.auth != null && 
+        exists(/databases/$(database)/documents/users/Aboba) &&
+        get(/databases/$(database)/documents/users/Aboba).data.uid == request.auth.uid;
+    }
+
+    match /users/{nickname} {
+      allow read: if true;
+      
+      // Создавать может любой, но один раз (UID прописывается при создании)
+      allow create: if request.auth != null;
+      
+      // Обновлять может только владелец UID или админ
+      allow update: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin()) {
+        // Обычные пользователи не могут менять критические поля
+        allow update: if isAdmin() || (
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['isBanned', 'luck', 'email', 'uid', 'nickname'])
+        );
+      }
+      
+      allow delete: if isAdmin();
+    }
+
+    match /games/{gameId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
+    }
+
+    match /settings/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
