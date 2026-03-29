@@ -88,7 +88,7 @@ export function GamePage() {
     })
 
     await updateDoc(doc(db, 'users', profile.nickname), {
-      balance: newBalance,
+      balance: increment(balanceChange),
       totalGamesPlayed: increment(1),
       totalWon: result === 'win' ? increment(payout) : increment(0),
       totalLost: result === 'lose' ? increment(bet) : increment(0),
