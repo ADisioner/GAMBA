@@ -12,7 +12,7 @@ import {
   Clock
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { collection, query, where, orderBy, limit, getDocs, addDoc, doc, updateDoc, increment } from 'firebase/firestore'
+import { collection, query, where, orderBy, limit, getDocs, addDoc, doc, updateDoc, increment, runTransaction } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { formatDynamicBalance, formatBalance } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
@@ -187,54 +187,88 @@ export function BankPage() {
     const commission = Math.floor(amt * (rate / 100)) 
     const totalDeduction = amt + commission
     
-    if (profile.balance < totalDeduction) {
-      toast.error(`Недостаточно средств (Нужно ${formatBalance(totalDeduction)} с учетом комиссии)`)
-      return
-    }
-
     setLoading(true)
     try {
-      const targetRef = doc(db, 'users', target)
-      const targetSnap = await getDoc(targetRef)
-      if (!targetSnap.exists()) {
-        toast.error('Получатель не найден')
-        return
-      }
-      
-      const targetData = targetSnap.data() as UserProfile
-
-      // Transaction 1: Sender
-      await updateDoc(doc(db, 'users', profile.nickname), {
-        balance: increment(-totalDeduction),
-        updatedAt: Date.now()
-      })
-      await logTransaction('withdraw', -totalDeduction, `Перевод игроку ${target}`, profile.balance - totalDeduction, commission)
-
-      // Transaction 2: Recipient
-      await updateDoc(targetRef, {
-        balance: increment(amt),
-        updatedAt: Date.now()
-      })
-      
-      // Лог для получателя (без комиссии, он просто получает amt)
-      await addDoc(collection(db, 'bank_transactions'), {
-        userId: target,
-        type: 'deposit',
-        amount: amt,
-        balanceAfter: targetData.balance + amt,
-        description: `Перевод от ${profile.nickname}`,
-        createdAt: Date.now()
+      // ИСПОЛЬЗУЕМ АТОМАРНУЮ ТРАНЗАКЦИЮ
+      // Это гарантирует, что либо оба игрока обновятся, либо никто.
+      // И предотвращает уход в минус из-за лагов/нескольких вкладок.
+      await runTransaction(db, async (transaction) => {
+        const senderRef = doc(db, 'users', profile.nickname)
+        const recipientRef = doc(db, 'users', target)
+        
+        const [senderSnap, recipientSnap] = await Promise.all([
+          transaction.get(senderRef),
+          transaction.get(recipientRef)
+        ])
+        
+        if (!senderSnap.exists()) throw new Error('Ошибка отправителя')
+        if (!recipientSnap.exists()) throw new Error('Получатель не найден')
+        
+        const senderData = senderSnap.data() as UserProfile
+        const targetData = recipientSnap.data() as UserProfile
+        
+        // Повторная проверка баланса уже на сервере (внутри транзакции)
+        if (senderData.balance < totalDeduction) {
+          throw new Error('Недостаточно средств (Нужно ' + formatBalance(totalDeduction) + ' с учетом комиссии)')
+        }
+        
+        // 1. Списание у отправителя
+        transaction.update(senderRef, {
+          balance: senderData.balance - totalDeduction,
+          updatedAt: Date.now()
+        })
+        
+        // 2. Начисление получателю
+        transaction.update(recipientRef, {
+          balance: targetData.balance + amt,
+          updatedAt: Date.now()
+        })
+        
+        // 3. Лог для отправителя
+        const sLogRef = doc(collection(db, 'bank_transactions'))
+        transaction.set(sLogRef, {
+          userId: profile.nickname,
+          type: 'withdraw',
+          amount: -totalDeduction,
+          balanceAfter: senderData.balance - totalDeduction,
+          description: `Перевод игроку ${target}`,
+          commission,
+          createdAt: Date.now()
+        })
+        
+        // 4. Лог для получателя
+        const rLogRef = doc(collection(db, 'bank_transactions'))
+        transaction.set(rLogRef, {
+          userId: target,
+          type: 'deposit',
+          amount: amt,
+          balanceAfter: targetData.balance + amt,
+          description: `Перевод от ${profile.nickname}`,
+          createdAt: Date.now()
+        })
       })
 
       await refreshProfile()
       setTransferAmount('')
       setTransferTarget('')
       toast.success(`Отправлено ${formatBalance(amt)} пользователю ${target}!`)
-    } catch (e) {
+    } catch (e: any) {
       console.error('Transfer error:', e)
-      toast.error('Ошибка при переводе')
+      toast.error(e.message || 'Ошибка при переводе')
     } finally {
       setLoading(false)
+    }
+  }
+
+  function setMaxTransfer() {
+    if (!profile) return
+    const rate = settings?.bankTransferCommission || 20
+    // Находим X, чтобы X + X*(rate/100) <= balance
+    // X * (1 + rate/100) = balance
+    // X = balance / (1 + rate/100)
+    const maxAmt = Math.floor(profile.balance / (1 + (rate / 100)))
+    if (maxAmt > 0) {
+      setTransferAmount(maxAmt.toString())
     }
   }
 
@@ -362,9 +396,15 @@ export function BankPage() {
                             type="number" 
                             value={transferAmount} 
                             onChange={e => setTransferAmount(e.target.value)}
-                            className="text-2xl h-14 bg-marble/50 border-gold/30 pr-24"
+                            className="text-2xl h-14 bg-marble/50 border-gold/30 pr-32"
                           />
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gold/60 font-medium">
+                          <button 
+                             onClick={setMaxTransfer}
+                             className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md bg-gold/10 text-gold-light hover:bg-gold/20 text-[10px] font-bold uppercase transition-all"
+                          >
+                             Макс
+                          </button>
+                          <div className="absolute right-4 -bottom-6 text-[10px] text-gold/60 font-medium">
                             +{Math.floor(parseInt(transferAmount || '0') * ((settings?.bankTransferCommission || 20) / 100))} комиссия
                           </div>
                         </div>
