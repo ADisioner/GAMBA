@@ -10,7 +10,6 @@ import { BankPage } from '@/pages/BankPage'
 import { ParticleBackground } from '@/components/ui/ParticleBackground'
 import { LiveFeedSidebar } from '@/components/layout/LiveFeedSidebar'
 import { HubPage } from '@/pages/HubPage'
-import PMCPage from '@/pages/PMCPage'
 
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -52,7 +51,6 @@ function AppRoutes() {
       <Route path="/game/:type" element={<PrivateRoute><GamePage /></PrivateRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
       <Route path="/bank" element={<PrivateRoute><BankPage /></PrivateRoute>} />
-      <Route path="/pmc" element={<PrivateRoute><PMCPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
@@ -81,7 +79,7 @@ function SidebarWrapper() {
   const { profile } = useAuth();
   const location = useLocation();
   
-  if (!profile || location.pathname === '/pmc' || location.pathname === '/hub') return null;
+  if (!profile || location.pathname === '/hub') return null;
 
   return <LiveFeedSidebar />;
 }

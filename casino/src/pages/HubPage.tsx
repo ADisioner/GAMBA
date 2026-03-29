@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Sparkles, Dice5, Shield, Lock, ArrowRight } from 'lucide-react'
+import { Sparkles, Dice5, Lock, ArrowRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 
@@ -15,15 +15,6 @@ export function HubPage() {
       path: '/lobby',
       enabled: true,
       label: 'Играть'
-    },
-    {
-      id: 'pmc',
-      title: 'PMC Tycoon',
-      description: 'Управляйте собственной ЧВК, выполняйте опасные контракты и доминируйте на рынке.',
-      icon: <Shield className="w-8 h-8 text-gold" />,
-      path: '/pmc',
-      enabled: true,
-      label: 'В бой'
     },
     {
       id: 'future',

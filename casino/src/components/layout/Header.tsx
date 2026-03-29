@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Coins, User, LayoutGrid, LogOut, Shield, Gift, Menu, X, Building2 } from 'lucide-react'
+import { Coins, User, LayoutGrid, LogOut, Shield, Gift, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatBalance, formatDynamicBalance } from '@/lib/utils'
@@ -43,35 +43,6 @@ function BonusButton({ profile, onClaim, className }: { profile: any, onClaim: (
   )
 }
 
-function TycoonButton({ className }: { className?: string }) {
-  const navigate = useNavigate();
-  return (
-    <motion.div
-      animate={{ 
-        scale: [1, 1.05, 1],
-        boxShadow: [
-          '0 0 0px rgba(139, 92, 246, 0)',
-          '0 0 15px rgba(139, 92, 246, 0.4)',
-          '0 0 0px rgba(139, 92, 246, 0)'
-        ]
-      }}
-      transition={{ 
-        duration: 3,
-        repeat: Infinity,
-        ease: "easeInOut"
-      }}
-    >
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={() => navigate('/pmc')}
-        className={`bg-gradient-to-br from-violet-600 to-indigo-700 hover:from-violet-500 hover:to-indigo-600 border-none text-white shadow-lg transition-all ${className}`}
-      >
-        <Building2 className="w-3.5 h-3.5 mr-1" /> Tycoon
-      </Button>
-    </motion.div>
-  )
-}
 
 export function Header() {
   const navigate = useNavigate()
@@ -132,7 +103,6 @@ export function Header() {
             </div>
 
             <div className="hidden md:flex items-center gap-3">
-              <TycoonButton className="text-xs w-24" />
               <BonusButton profile={profile} onClaim={claimDailyBonus} className="text-xs w-24" />
               <button 
                 onClick={() => navigate('/bank')}
@@ -176,7 +146,6 @@ export function Header() {
               <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-foreground/80 hover:text-gold rounded-lg"><User className="w-5 h-5 text-gold/70" /> Профиль</Link>
               {isAdmin && <Link to="/admin" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 w-full px-4 py-3 text-neon-red rounded-lg"><Shield className="w-5 h-5" /> Админ</Link>}
               <div className="px-4 py-2 space-y-2">
-                <TycoonButton className="w-full justify-start py-6 text-base" />
                 <BonusButton profile={profile} onClaim={claimDailyBonus} className="w-full justify-start py-6" />
               </div>
               <button onClick={() => { logout(); setMobileMenuOpen(false) }} className="flex items-center gap-3 w-full px-4 py-3 text-foreground/80 hover:text-neon-red rounded-lg"><LogOut className="w-5 h-5" /> Выход</button>
