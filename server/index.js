@@ -2,6 +2,9 @@ const admin = require('firebase-admin');
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { z } = require('zod');
 
 dotenv.config();
 
@@ -22,7 +25,8 @@ try {
 
 const db = admin.firestore();
 
-// --- CORS & LOGGING ---
+// --- CORS, SECURITY & LOGGING ---
+app.use(helmet());
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -36,47 +40,70 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// --- МИДДЛВАР ---
+// --- RATE LIMITERS ---
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 30, // Limit each IP to 30 requests per API route per windowMs
+  message: { error: 'Слишком много запросов, подождите немного.' }
+});
+
+app.use('/api/', apiLimiter);
+
+// --- МИДДЛВАР АВТОРИЗАЦИИ (JWT ID Token) ---
 const authenticateToken = async (req, res, next) => {
   if (req.method === 'OPTIONS') return next();
 
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) return res.status(401).json({ error: 'Auth missing' });
-
-  let nickname;
-  try {
-    nickname = decodeURIComponent(token);
-  } catch (e) {
-    console.error('[AUTH] decodeURIComponent failed:', token, e);
-    return res.status(403).json({ error: 'Invalid token encoding' });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Auth missing' });
   }
+  const idToken = authHeader.split('Bearer ')[1];
 
   try {
-    const userSnap = await db.collection('users').doc(nickname).get();
-    if (!userSnap.exists) {
-      console.warn('[AUTH] User not found in Firestore:', nickname);
-      return res.status(404).json({ error: 'User not found' });
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const uid = decodedToken.uid;
+    
+    // Ищем пользователя по UID
+    const usersRef = admin.firestore().collection('users');
+    const snapshot = await usersRef.where('uid', '==', uid).limit(1).get();
+    
+    if (snapshot.empty) {
+      console.warn('[AUTH] User not found by UID:', uid);
+      return res.status(404).json({ error: 'User not found in database' });
     }
-    req.user = { nickname, ...userSnap.data() };
+    
+    // Ожидаем, что 1 профиль привязан к 1 UID
+    const userDoc = snapshot.docs[0];
+    req.user = { nickname: userDoc.id, ...userDoc.data() };
     next();
   } catch (err) {
-    console.error('[AUTH] Firestore lookup error for:', nickname, err);
-    return res.status(403).json({ error: 'Invalid auth', detail: err.message });
+    console.error('[AUTH] Failed to verify ID token:', err.message);
+    return res.status(403).json({ error: 'Invalid auth token', detail: err.message });
   }
 };
 
+// --- СХЕМЫ ВАЛИДАЦИИ (ZOD) ---
+const transferSchema = z.object({
+  target: z.string().min(2, 'Никнейм должен быть от 2 символов').trim(),
+  amount: z.number().int().positive('Сумма должна быть больше нуля')
+});
+
+function validateRequest(schema) {
+  return (req, res, next) => {
+    try {
+      req.body = schema.parse(req.body); // Очистка и валидация
+      next();
+    } catch (error) {
+      return res.status(400).json({ error: error.errors[0].message });
+    }
+  };
+}
 
 // --- БАНКОВСКИЕ ОПЕРАЦИИ ---
-app.post('/api/bank/transfer', authenticateToken, async (req, res) => {
+app.post('/api/bank/transfer', authenticateToken, validateRequest(transferSchema), async (req, res) => {
   const { target, amount } = req.body;
   const senderId = req.user.nickname;
-  const amt = parseInt(amount);
-
-  if (isNaN(amt) || amt <= 0 || !target) {
-    return res.status(400).json({ error: 'Некорректная сумма или получатель' });
-  }
+  const amt = amount; // Уже проверено через Zod
 
   if (target.toLowerCase() === senderId.toLowerCase()) {
     return res.status(400).json({ error: 'Нельзя перевести самому себе' });

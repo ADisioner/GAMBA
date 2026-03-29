@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { collection, query, where, orderBy, limit, getDocs, addDoc, doc, updateDoc, increment, runTransaction } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { db, auth } from '@/lib/firebase'
 import { formatDynamicBalance, formatBalance } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -192,8 +192,9 @@ export function BankPage() {
       // ПЕРЕНОСИМ ЛОГИКУ ПЕРЕВОДА НА СЕРВЕР
       // Это решает ошибку "Missing or insufficient permissions", 
       // так как обычный игрок не может менять баланс другого игрока в Firestore напрямую.
-      // В этой системе токеном является никнейм пользователя
-      const token = localStorage.getItem('gamba_user') || sessionStorage.getItem('gamba_user') || ''
+      // Теперь используется подлинный Firebase ID Токен для аутентификации
+      if (!auth.currentUser) throw new Error('Не авторизован в Firebase');
+      const token = await auth.currentUser.getIdToken();
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       
       // Настраиваем URL: если в apiUrl уже есть '/api', то не добавляем его дважды.
@@ -203,7 +204,7 @@ export function BankPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${encodeURIComponent(token)}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ 
           target: target, 
