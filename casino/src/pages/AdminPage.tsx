@@ -280,7 +280,7 @@ export function AdminPage() {
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
           <Shield className="w-6 h-6 text-neon-red" />
-          <h1 className="font-serif text-3xl font-bold text-foreground">Админ-панель</h1>
+          <h1 className="font-serif text-3xl font-bold text-foreground">Админ-панель (UPDATED)</h1>
           <div className="flex-1" />
           <Button 
             variant="outline" 
