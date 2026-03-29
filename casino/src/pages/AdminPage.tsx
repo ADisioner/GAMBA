@@ -230,6 +230,19 @@ export function AdminPage() {
       })
       
       await batch.commit()
+
+      // 3. Очистка игровых логов (первые 500 для простоты, т.к. это лимит батча)
+      const gamesSnap = await getDocs(query(collection(db, 'games'), limit(500)))
+      const gamesBatch = writeBatch(db)
+      gamesSnap.docs.forEach(d => gamesBatch.delete(d.ref))
+      await gamesBatch.commit()
+
+      // 4. Очистка банковских транзакций (первые 500)
+      const txSnap = await getDocs(query(collection(db, 'bank_transactions'), limit(500)))
+      const txBatch = writeBatch(db)
+      txSnap.docs.forEach(d => txBatch.delete(d.ref))
+      await txBatch.commit()
+      
       toast.success('Вся статистика успешно сброшена')
       loadUsers()
     } catch (e) {
