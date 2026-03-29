@@ -92,7 +92,7 @@ export function GamePage() {
       totalGamesPlayed: increment(1),
       totalWon: result === 'win' ? increment(payout) : increment(0),
       totalLost: result === 'lose' ? increment(bet) : increment(0),
-      luck: newLuck,
+      // Убрали удачу из авто-обновления, чтобы не затирать админские правки
       updatedAt: Date.now(),
     })
 
