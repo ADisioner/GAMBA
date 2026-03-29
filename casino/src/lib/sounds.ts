@@ -1,6 +1,6 @@
 /**
  * Звуковая система GAMBA — синтезированные эффекты через Web Audio API.
- * Не требует внешних файлов, генерирует звуки программно.
+ * Улучшенные "Luxury" звуки с мягкими атаками, гармониками и богатыми текстурами.
  */
 
 let audioCtx: AudioContext | null = null
@@ -11,154 +11,185 @@ function getCtx(): AudioContext {
   return audioCtx
 }
 
-/** Играет тон с заданной частотой, длительностью и типом волны */
-function playTone(freq: number, duration: number, type: OscillatorType = 'sine', volume = 0.3) {
+/** Создает мягкий ADSR-образный Envelope для более натурального звучания */
+function playLuxuryTone(freq: number, duration: number, type: OscillatorType = 'sine', volume = 0.3, harmonics = false) {
   const ctx = getCtx()
+  const now = ctx.currentTime
+  
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
+  
   osc.type = type
-  osc.frequency.setValueAtTime(freq, ctx.currentTime)
-  gain.gain.setValueAtTime(volume, ctx.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
+  osc.frequency.setValueAtTime(freq, now)
+  
+  // Luxury ADSR Envelope
+  gain.gain.setValueAtTime(0, now)
+  gain.gain.linearRampToValueAtTime(volume, now + 0.02) // Мягкая атака
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration) // Плавное затухание
+  
   osc.connect(gain)
   gain.connect(ctx.destination)
-  osc.start(ctx.currentTime)
-  osc.stop(ctx.currentTime + duration)
+  
+  osc.start(now)
+  osc.stop(now + duration)
+  
+  // Добавляем теплые гармоники для "богатого" звука
+  if (harmonics) {
+    const h1 = ctx.createOscillator()
+    const h1Gain = ctx.createGain()
+    h1.type = 'sine'
+    h1.frequency.setValueAtTime(freq * 2.01, now) // Небольшой расстрой для объема
+    h1Gain.gain.setValueAtTime(0, now)
+    h1Gain.gain.linearRampToValueAtTime(volume * 0.4, now + 0.05)
+    h1Gain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.8)
+    h1.connect(h1Gain)
+    h1Gain.connect(ctx.destination)
+    h1.start(now)
+    h1.stop(now + duration)
+  }
 }
 
-/** Белый шум (для crash/explosion) */
-function playNoise(duration: number, volume = 0.15) {
+/** Белый шум (отфильтрованный для эффектов) */
+function playFilteredNoise(duration: number, volume = 0.1, lowPass = 2000) {
   const ctx = getCtx()
   const bufferSize = ctx.sampleRate * duration
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
   const data = buffer.getChannelData(0)
-  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * volume
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1)
+  
   const source = ctx.createBufferSource()
   const gain = ctx.createGain()
+  const filter = ctx.createBiquadFilter()
+  
   source.buffer = buffer
+  filter.type = 'lowpass'
+  filter.frequency.setValueAtTime(lowPass, ctx.currentTime)
+  
   gain.gain.setValueAtTime(volume, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
-  source.connect(gain)
+  
+  source.connect(filter)
+  filter.connect(gain)
   gain.connect(ctx.destination)
   source.start()
 }
 
-// === Звуковые эффекты ===
-
 export const sounds = {
-  /** Клик по кнопке */
+  /** Клик по кнопке — мягкий деревянный щелчок */
   click() {
-    playTone(800, 0.08, 'sine', 0.15)
+    playLuxuryTone(1200, 0.08, 'sine', 0.1)
+    playLuxuryTone(600, 0.05, 'triangle', 0.05)
   },
 
-  /** Ставка сделана */
+  /** Ставка сделана — звон монет */
   bet() {
-    playTone(600, 0.1, 'sine', 0.2)
-    setTimeout(() => playTone(900, 0.1, 'sine', 0.15), 50)
+    playLuxuryTone(1800, 0.15, 'sine', 0.1, true)
+    setTimeout(() => playLuxuryTone(2400, 0.12, 'sine', 0.08), 40)
+    setTimeout(() => playLuxuryTone(1200, 0.2, 'sine', 0.05), 80)
   },
 
-  /** Вращение слотов — тикающий звук */
+  /** Вращение слотов — механический шелест */
   slotTick() {
-    playTone(400 + Math.random() * 200, 0.04, 'square', 0.08)
+    playLuxuryTone(200 + Math.random() * 50, 0.03, 'triangle', 0.06)
   },
 
-  /** Барабан слота остановился */
+  /** Барабан слота остановился — глухой удар */
   slotStop() {
-    playTone(300, 0.15, 'triangle', 0.2)
-    setTimeout(() => playTone(500, 0.1, 'sine', 0.15), 80)
+    playLuxuryTone(150, 0.2, 'triangle', 0.15)
+    playFilteredNoise(0.05, 0.05, 500)
   },
 
-  /** Выигрыш — мелодия из 4 нот */
+  /** Выигрыш — благородная арфа */
   win() {
-    const notes = [523, 659, 784, 1047] // C5 E5 G5 C6
+    const notes = [659.25, 783.99, 1046.5, 1318.51] // E5 G5 C6 E6
     notes.forEach((freq, i) => {
-      setTimeout(() => playTone(freq, 0.25, 'sine', 0.25), i * 120)
+      setTimeout(() => playLuxuryTone(freq, 0.6, 'sine', 0.15, true), i * 150)
     })
   },
 
-  /** Большой выигрыш — расширенная мелодия */
+  /** Большой выигрыш — оркестровый аккорд */
   bigWin() {
-    const notes = [523, 659, 784, 1047, 1175, 1319, 1568] // мажорная гамма вверх
-    notes.forEach((freq, i) => {
-      setTimeout(() => playTone(freq, 0.3, 'sine', 0.3), i * 100)
+    const root = 523.25 // C5
+    const chord = [1, 1.25, 1.5, 2, 2.5, 3] // Major chord harmonics
+    chord.forEach((mult, i) => {
+      setTimeout(() => playLuxuryTone(root * mult, 1.5, 'sine', 0.1, true), i * 100)
     })
-    // добавляем «искры»
-    for (let i = 0; i < 8; i++) {
-      setTimeout(() => playTone(2000 + Math.random() * 2000, 0.05, 'sine', 0.1), 700 + i * 60)
+    // Эффект дождя из монет
+    for (let i = 0; i < 15; i++) {
+      setTimeout(() => playLuxuryTone(3000 + Math.random() * 3000, 0.1, 'sine', 0.05), 500 + i * 80)
     }
   },
 
-  /** Проигрыш */
+  /** Проигрыш — глубокий меланхоличный бас */
   lose() {
-    playTone(300, 0.3, 'sawtooth', 0.12)
-    setTimeout(() => playTone(200, 0.4, 'sawtooth', 0.1), 150)
+    playLuxuryTone(150, 0.6, 'sine', 0.15)
+    setTimeout(() => playLuxuryTone(110, 0.8, 'sine', 0.1), 200)
   },
 
-  /** Раздача карты */
+  /** Раздача карты — шелест бумаги */
   cardDeal() {
-    playNoise(0.06, 0.2)
-    playTone(1200, 0.05, 'sine', 0.1)
+    playFilteredNoise(0.12, 0.15, 3000)
+    playLuxuryTone(800, 0.05, 'sine', 0.05)
   },
 
   /** Переворот карты */
   cardFlip() {
-    playTone(800, 0.08, 'triangle', 0.15)
-    playNoise(0.04, 0.1)
+    playLuxuryTone(600, 0.1, 'triangle', 0.1)
+    playFilteredNoise(0.04, 0.08, 1500)
   },
 
-  /** Рулетка — звук шарика */
+  /** Рулетка — звук шарика (хрустальный перебор) */
   rouletteTick() {
-    playTone(1800 + Math.random() * 400, 0.03, 'sine', 0.12)
+    // Высокий "стеклянный" звук для шарика
+    playLuxuryTone(2500 + Math.random() * 500, 0.04, 'sine', 0.08)
   },
 
-  /** Рулетка — шарик приземлился */
+  /** Рулетка — шарик приземлился — мягкий резонанс */
   rouletteLand() {
-    playTone(600, 0.2, 'triangle', 0.2)
-    setTimeout(() => playTone(800, 0.15, 'sine', 0.15), 100)
-    setTimeout(() => playTone(1000, 0.1, 'sine', 0.1), 200)
+    playLuxuryTone(400, 0.4, 'triangle', 0.15, true)
+    setTimeout(() => playLuxuryTone(800, 0.3, 'sine', 0.1), 100)
+    playFilteredNoise(0.2, 0.05, 800)
   },
 
-  /** Crash — множитель растёт */
+  /** Crash — гул взлета */
   crashTick(multiplier: number) {
-    const freq = 200 + multiplier * 100
-    playTone(Math.min(freq, 2000), 0.04, 'sine', 0.08)
+    const freq = 150 + (multiplier - 1) * 300
+    playLuxuryTone(Math.min(freq, 1500), 0.05, 'sine', 0.06)
   },
 
-  /** Crash — взрыв */
+  /** Crash — взрыв (теперь более объемный) */
   crashExplode() {
-    playNoise(0.5, 0.3)
-    playTone(100, 0.5, 'sawtooth', 0.2)
-    setTimeout(() => playTone(60, 0.4, 'sawtooth', 0.15), 100)
+    playFilteredNoise(1.2, 0.25, 400)
+    playLuxuryTone(60, 1.0, 'sawtooth', 0.15)
+    playLuxuryTone(40, 1.5, 'sine', 0.2)
   },
 
-  /** Cash out */
+  /** Cash out — триумфальный подъем */
   cashOut() {
-    playTone(800, 0.1, 'sine', 0.2)
-    setTimeout(() => playTone(1200, 0.1, 'sine', 0.2), 80)
-    setTimeout(() => playTone(1600, 0.15, 'sine', 0.25), 160)
+    const notes = [1046.5, 1318.51, 1567.98] // C6 E6 G6
+    notes.forEach((f, i) => setTimeout(() => playLuxuryTone(f, 0.4, 'sine', 0.15, true), i * 100))
   },
 
-  /** Mines — открытие безопасной клетки */
+  /** Mines — безопасный кристалл */
   minesSafe() {
-    playTone(800 + Math.random() * 400, 0.1, 'sine', 0.2)
+    playLuxuryTone(1200 + Math.random() * 600, 0.15, 'sine', 0.15, true)
   },
 
-  /** Mines — нашли мину */
+  /** Mines — мина (подземный гул) */
   minesBoom() {
-    playNoise(0.4, 0.25)
-    playTone(150, 0.4, 'sawtooth', 0.2)
-    setTimeout(() => playTone(80, 0.3, 'square', 0.15), 100)
+    playFilteredNoise(0.8, 0.2, 600)
+    playLuxuryTone(80, 0.8, 'triangle', 0.2)
   },
 
-  /** Ежедневный бонус */
+  /** Бонус — небесный колокольчик */
   bonus() {
-    const notes = [440, 554, 659, 880]
-    notes.forEach((f, i) => setTimeout(() => playTone(f, 0.2, 'sine', 0.25), i * 150))
+    const notes = [1046.5, 1318.51, 1567.98, 2093.00]
+    notes.forEach((f, i) => setTimeout(() => playLuxuryTone(f, 1.0, 'sine', 0.2, true), i * 150))
   },
 
   /** Сообщение в чате */
   chatMessage() {
-    playTone(1200, 0.05, 'sine', 0.1)
-    setTimeout(() => playTone(1500, 0.05, 'sine', 0.08), 60)
+    playLuxuryTone(1500, 0.05, 'sine', 0.08)
+    setTimeout(() => playLuxuryTone(1800, 0.05, 'sine', 0.06), 40)
   },
 }

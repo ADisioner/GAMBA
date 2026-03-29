@@ -172,7 +172,8 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult }: Props) {
         if (result === 'win') {
           setLastWin(payout)
           setTimeout(() => setShowWin(true), 300)
-          if (allSame) sounds.bigWin(); else sounds.win()
+          if (allSame) sounds.bigWin()
+          else sounds.win()
         } else {
           sounds.lose()
         }

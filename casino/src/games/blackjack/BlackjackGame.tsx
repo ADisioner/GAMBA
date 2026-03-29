@@ -113,8 +113,10 @@ export function BlackjackGame({ bet, luck, houseEdge, balance, onResult, multipl
     }
     setDeck(d); setPlayerHand(pH); setDealerHand(dH)
     setGameState('playing'); setMessage('')
-    sounds.cardDeal(); setTimeout(() => sounds.cardDeal(), 150)
-    setTimeout(() => sounds.cardDeal(), 300); setTimeout(() => sounds.cardDeal(), 450)
+    sounds.cardDeal()
+    setTimeout(() => sounds.cardDeal(), 150)
+    setTimeout(() => sounds.cardDeal(), 300)
+    setTimeout(() => sounds.cardDeal(), 450)
     if (cardScore(pH) === 21) {
       dH[1].hidden = false; setDealerHand([...dH])
       sounds.cardFlip()
@@ -146,7 +148,8 @@ export function BlackjackGame({ bet, luck, houseEdge, balance, onResult, multipl
     if (cardScore(newHand) > 21) {
       setMessage('Перебор! 💀'); setGameState('done')
       dealerHand[1].hidden = false; setDealerHand([...dealerHand])
-      sounds.lose(); onResult('lose', 0, { player: newHand, dealer: dealerHand })
+      sounds.lose()
+      onResult('lose', 0, { player: newHand, dealer: dealerHand })
     }
   }, [gameState, deck, playerHand, dealerHand, luck, onResult, isMulti])
 
@@ -184,7 +187,8 @@ export function BlackjackGame({ bet, luck, houseEdge, balance, onResult, multipl
       onResult('push', bet, { player: finalPlayerHand, dealer: dH })
     } else {
       setMessage('Дилер выиграл 😞'); setGameState('done')
-      sounds.lose(); onResult('lose', 0, { player: finalPlayerHand, dealer: dH })
+      sounds.lose()
+      onResult('lose', 0, { player: finalPlayerHand, dealer: dH })
     }
   }, [gameState, deck, dealerHand, playerHand, bet, luck, onResult, isMulti])
 

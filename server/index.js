@@ -273,4 +273,25 @@ app.post('/api/pmc/end-turn', authenticateToken, async (req, res) => {
   res.json({ success: true, profit: totalProfit, week: user.pmc_currentWeek + 1 });
 });
 
-app.listen(PORT, () => console.log(`PMC Server on port ${PORT}`));
+app.post('/api/admin/deploy', authenticateToken, async (req, res) => {
+  const adminNick = process.env.ADMIN_NICKNAME || 'Aboba';
+  if (req.user.nickname !== adminNick) {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+
+  const { exec } = require('child_process');
+  
+  // We specify the absolute path to the deploy script.
+  // We use bash so output correctly returns and we can troubleshoot if needed.
+  exec('/root/deploy.sh', (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Deploy error: ${error}`);
+      return res.status(500).json({ error: 'Deploy script failed', details: stderr });
+    }
+    console.log(`Deploy output: ${stdout}`);
+    res.json({ success: true, output: stdout });
+  });
+});
+
+app.listen(PORT, '0.0.0.0', () => console.log(`PMC Server on port ${PORT} (0.0.0.0)`));
+

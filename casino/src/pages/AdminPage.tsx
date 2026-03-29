@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Shield, Users, Coins, Clover, Megaphone, History, Settings, Download } from 'lucide-react'
+import { Shield, Users, Coins, Clover, Megaphone, History, Settings, Download, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,6 +26,7 @@ export function AdminPage() {
   const [sessionBankProfit, setSessionBankProfit] = useState(0)
   const [activeRooms, setActiveRooms] = useState<any[]>([])
 
+  const [isDeploying, setIsDeploying] = useState(false)
   useEffect(() => { 
     loadUsers()
     loadGlobalStats()
@@ -239,6 +240,28 @@ export function AdminPage() {
     const a = document.createElement('a'); a.href = url; a.download = 'gamba_stats.csv'; a.click()
   }
 
+  async function runDeploy() {
+    if (!window.confirm('Вы уверены, что хотите обновить проект из GitHub? Это перезапустит сервер.')) return
+    setIsDeploying(true)
+    const t = toast.loading('Начало обновления...')
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/deploy`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${profile?.nickname}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Проект успешно обновлен!', { id: t })
+      } else {
+        toast.error(`Ошибка обновления: ${data.details || data.error}`, { id: t })
+      }
+    } catch (e) {
+      toast.error('Не удалось соединиться с сервером обновлений', { id: t })
+    } finally {
+      setIsDeploying(false)
+    }
+  }
+
   const tabs = [
     { id: 'users' as Tab, icon: Users, label: 'Игроки' },
     { id: 'history' as Tab, icon: History, label: 'История' },
@@ -258,6 +281,17 @@ export function AdminPage() {
         <div className="flex items-center gap-3 mb-6">
           <Shield className="w-6 h-6 text-neon-red" />
           <h1 className="font-serif text-3xl font-bold text-foreground">Админ-панель</h1>
+          <div className="flex-1" />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="border-gold/30 hover:bg-gold/10 text-gold"
+            onClick={runDeploy}
+            disabled={isDeploying}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isDeploying ? 'animate-spin' : ''}`} />
+            {isDeploying ? 'Обновляется...' : 'Обновить из GitHub'}
+          </Button>
         </div>
 
         <div className="flex gap-2 mb-6 flex-wrap">

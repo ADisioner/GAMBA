@@ -213,7 +213,8 @@ export function PokerGame({ bet, luck, houseEdge, balance, onResult, multiplayer
       payout = bet * PAYOUTS[evalResult]
       setResultMessage(`${HAND_NAMES[evalResult]}!`)
       setLastWin(payout)
-      if (PAYOUTS[evalResult] >= 6) sounds.bigWin(); else sounds.win()
+      if (PAYOUTS[evalResult] >= 6) sounds.bigWin()
+      else sounds.win()
     } else {
       setResultMessage('Нет комбинации')
       sounds.lose()

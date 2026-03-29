@@ -4,9 +4,13 @@
   "description": "Unified entry point for PMC: Tycoon",
   "scripts": {
     "install-all": "npm install && cd server && npm install && cd ../casino && npm install",
-    "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix casino\""
+    "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix casino -- --host\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "ssh2": "^1.17.0",
+    "ssh2-sftp-client": "^12.1.1"
   }
 }
