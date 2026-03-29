@@ -83,6 +83,7 @@ export function GamePage() {
       return true
     } catch (e) {
       console.error('Take bet error:', e)
+      toast.error('Ошибка при списании ставки')
       return false
     }
   }, [profile])

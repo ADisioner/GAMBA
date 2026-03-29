@@ -16,13 +16,16 @@ service cloud.firestore {
       allow create: if request.auth != null;
       
       // Обновлять может только владелец UID или админ
-      allow update: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin()) {
-        // Обычные пользователи не могут менять критические поля
-        allow update: if isAdmin() || (
+      // Обычные пользователи не могут:
+      // 1. Менять критические поля (блокируется в diff)
+      // 2. Уходить в минус (критично для защиты от абуза в нескольких вкладках)
+      allow update: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin()) && (
+        isAdmin() || (
           !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['isBanned', 'luck', 'email', 'uid', 'nickname'])
-        );
-      }
+            .hasAny(['isBanned', 'luck', 'email', 'uid', 'nickname']) &&
+          request.resource.data.balance >= 0
+        )
+      );
       
       allow delete: if isAdmin();
     }
