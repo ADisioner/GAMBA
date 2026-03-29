@@ -125,43 +125,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  async function loadProfile(nickname: string) {
-    try {
-      const snap = await getDoc(doc(db, 'users', nickname))
+  const [currentNick, setCurrentNick] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadSettings()
+    const saved = localStorage.getItem('gamba_user') || sessionStorage.getItem('gamba_user')
+    if (saved) setCurrentNick(saved)
+    else setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (!currentNick) {
+      setProfile(null)
+      return
+    }
+
+    const unsub = onSnapshot(doc(db, 'users', currentNick), async (snap) => {
       if (snap.exists()) {
         const data = snap.data() as UserProfile
         if (data.isBanned) {
           logout()
-          return null
-        }
-        
-        // ВСЕГДА проверяем сессию Firebase при загрузке профиля
-        if (!auth.currentUser) {
-          try {
-            await signInAnonymously(auth)
-          } catch (e) {
-            console.error('Firebase Auth restoration failed:', e)
+        } else {
+          // Restore Auth if needed
+          if (!auth.currentUser) {
+            try { await signInAnonymously(auth) } catch (e) { console.error(e) }
           }
+          setProfile(data)
         }
-
-        // Синхронизируем UID профиля с реальным Auth UID (исправляет "битые" после регена профили)
-        if (auth.currentUser && data.uid !== auth.currentUser.uid) {
-          console.log('Syncing profile UID with Auth UID...', { old: data.uid, new: auth.currentUser.uid })
-          data.uid = auth.currentUser.uid
-          await updateDoc(doc(db, 'users', nickname), { uid: data.uid })
-        }
-
-        setProfile(data)
-        return data
+      } else {
+        logout()
       }
-    } catch (e) {
-      console.error('Load profile error:', e)
-    }
-    return null
-  }
+      setLoading(false)
+    }, (err) => {
+      console.error('Profile listener error:', err)
+      setLoading(false)
+    })
+
+    return () => unsub()
+  }, [currentNick])
 
   async function refreshProfile() {
-    if (profile) await loadProfile(profile.nickname)
+    // onSnapshot handles this now, but we keep the method for compatibility
   }
 
   async function register(nickname: string, password: string, rememberMe = false): Promise<{ ok: boolean; error?: string }> {
@@ -200,12 +204,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await setDoc(doc(db, 'users', nickname), newProfile)
-    setProfile(newProfile)
     if (rememberMe) {
       localStorage.setItem('gamba_user', nickname)
     } else {
       sessionStorage.setItem('gamba_user', nickname)
     }
+    setCurrentNick(nickname)
     return { ok: true }
   }
 
@@ -228,12 +232,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await signInAnonymously(auth)
     }
 
-    setProfile(user)
     if (rememberMe) {
       localStorage.setItem('gamba_user', nickname)
     } else {
       sessionStorage.setItem('gamba_user', nickname)
     }
+    setCurrentNick(nickname)
     return { ok: true }
   }
 
@@ -255,8 +259,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, error: 'Ваш аккаунт заблокирован администратором' }
         }
 
-        setProfile(existingProfile)
         localStorage.setItem('gamba_user', existingProfile.nickname)
+        setCurrentNick(existingProfile.nickname)
         return { ok: true }
       } else {
         // Профиля нет — просим выбрать ник
@@ -297,9 +301,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     await setDoc(doc(db, 'users', nickname), newProfile)
-    setProfile(newProfile)
     setPendingGoogleUser(null)
     localStorage.setItem('gamba_user', nickname)
+    setCurrentNick(nickname)
     return { ok: true }
   }
 
@@ -308,20 +312,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   function logout() {
-    setProfile(null)
+    setCurrentNick(null)
     localStorage.removeItem('gamba_user')
     sessionStorage.removeItem('gamba_user')
   }
 
-  useEffect(() => {
-    (async () => {
-      await loadSettings()
-      // Авто-логин из localStorage или sessionStorage
-      const saved = localStorage.getItem('gamba_user') || sessionStorage.getItem('gamba_user')
-      if (saved) await loadProfile(saved)
-      setLoading(false)
-    })()
-  }, [])
 
   function addLiveEvent(event: Omit<LiveEvent, 'id' | 'createdAt'>) {
     try {
