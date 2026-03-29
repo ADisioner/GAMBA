@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Header } from '@/components/layout/Header'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatBalance } from '@/lib/utils'
-import type { UserProfile, GameRecord } from '@/types'
+import type { UserProfile, GameRecord, GameType } from '@/types'
 import { collection, getDocs, doc, updateDoc, query, orderBy, limit, deleteDoc, getDoc, setDoc, where } from 'firebase/firestore'
 import { ref, push, onValue, remove } from 'firebase/database'
 import { db, rtdb } from '@/lib/firebase'
@@ -176,12 +176,33 @@ export function AdminPage() {
     loadUsers()
   }
 
-  async function updateBankSetting(key: string, val: string) {
-    const num = parseInt(val)
+  async function updateBankSetting(field: string, val: string | number) {
+    if (!settings) return
+    const num = typeof val === 'string' ? parseFloat(val.replace(',', '.')) : val
     if (isNaN(num)) return
-    await updateDoc(doc(db, 'settings', 'global'), { [key]: num })
-    toast.success('Настройка банка сохранена')
-    // В идеале тут нужен reload settings из контекста, но для админа сойдет и так (обновится после рефреша)
+    try {
+      await updateDoc(doc(db, 'settings', 'global'), { [field]: num })
+      toast.success('Настройка обновлена')
+    } catch { toast.error('Ошибка сохранения') }
+  }
+
+  async function toggleGame(type: GameType, enabled: boolean) {
+    if (!settings) return
+    try {
+      const config = settings.gamesConfig || {}
+      const gameConfig = config[type] || { enabled: true, order: 0, name: type, description: '' }
+      
+      const newConfig = {
+        ...config,
+        [type]: { ...gameConfig, enabled }
+      }
+
+      await updateDoc(doc(db, 'settings', 'global'), { gamesConfig: newConfig })
+      toast.success(`${enabled ? 'Включено' : 'Выключено'}: ${type}`)
+    } catch (e) {
+      console.error(e)
+      toast.error('Ошибка обновления игры')
+    }
   }
 
   async function clearGlobalHistory() {
@@ -518,6 +539,32 @@ export function AdminPage() {
                 <div className="p-4 rounded-xl bg-marble/20 border border-gold/10">
                   <p className="text-[10px] uppercase text-muted-foreground mb-1 font-bold">House Edge</p>
                   <p className="text-2xl font-serif text-neon-red">{((settings?.houseEdge || 0.03) * 100).toFixed(1)}%</p>
+                </div>
+              </div>
+
+              <div className="mt-8 space-y-4">
+                <h3 className="text-lg font-serif font-bold text-gold flex items-center gap-2">
+                   🎮 Игровой зал (Вкл/Выкл)
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+                  {(['slots', 'roulette', 'blackjack', 'crash', 'mines', 'poker'] as GameType[]).map(gt => {
+                    const isEnabled = settings?.gamesConfig?.[gt]?.enabled !== false;
+                    return (
+                      <div key={gt} className={`p-3 rounded-xl border transition-all ${isEnabled ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/5 border-red-500/10 opacity-60'}`}>
+                        <div className="flex flex-col gap-2 items-center text-center">
+                          <span className="text-[10px] uppercase font-bold tracking-wider">{gt}</span>
+                          <Button 
+                            variant={isEnabled ? 'default' : 'outline'} 
+                            size="sm" 
+                            className={`h-7 w-full text-[10px] ${isEnabled ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-950/40 text-red-500 border-red-500/30'}`}
+                            onClick={() => toggleGame(gt, !isEnabled)}
+                          >
+                            {isEnabled ? 'АКТИВНА' : 'ВЫКЛЮЧЕНА'}
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
