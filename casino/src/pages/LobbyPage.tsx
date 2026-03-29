@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Crown, CircleDot, Spade, Bomb, TrendingUp, Play, Sparkles, Trophy, MessageSquare, Star } from 'lucide-react'
+import { Crown, CircleDot, Spade, Bomb, TrendingUp, Play, Sparkles, Trophy, MessageSquare, Star, Club } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/contexts/AuthContext'
-import { formatBalance } from '@/lib/utils'
+import { toast } from 'sonner'
+import { formatBalance, formatDynamicBalance } from '@/lib/utils'
 import { Header } from '@/components/layout/Header'
+import { MultiplayerLobby } from '@/components/multiplayer/MultiplayerLobby'
 import type { GameType, LeaderboardEntry, ChatMessage } from '@/types'
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { ref, onValue, push } from 'firebase/database'
@@ -19,6 +21,7 @@ const GAME_CARDS: { type: GameType; icon: React.ReactNode; gradient: string; bad
   { type: 'blackjack', icon: <Spade className="w-8 h-8" />, gradient: 'from-gray-700 via-gray-600 to-gray-500' },
   { type: 'crash', icon: <TrendingUp className="w-8 h-8" />, gradient: 'from-emerald-700 via-emerald-500 to-emerald-400', badge: 'NEW' },
   { type: 'mines', icon: <Bomb className="w-8 h-8" />, gradient: 'from-blue-900 via-blue-600 to-blue-400' },
+  { type: 'poker', icon: <Club className="w-8 h-8" />, gradient: 'from-violet-900 via-purple-600 to-fuchsia-400' },
 ]
 
 function GameCard({ type, icon, gradient, badge, config }: {
@@ -57,18 +60,49 @@ function ChatPanel() {
   const [newMsg, setNewMsg] = useState('')
 
   useEffect(() => {
-    return onValue(ref(rtdb, 'chat'), (snap) => {
-      const d = snap.val()
-      if (!d) return
-      setMessages(Object.entries(d).map(([id, m]) => ({ id, ...(m as Omit<ChatMessage, 'id'>) })).sort((a, b) => a.createdAt - b.createdAt).slice(-50))
-    })
+    try {
+      const chatRef = ref(rtdb, 'chat')
+      console.log('Connecting to chat RTDB...')
+      return onValue(chatRef, (snap) => {
+        const d = snap.val()
+        if (!d) {
+          setMessages([])
+          return
+        }
+        const msgs = Object.entries(d).map(([id, m]) => ({ id, ...(m as Omit<ChatMessage, 'id'>) }))
+          .sort((a, b) => a.createdAt - b.createdAt)
+          .slice(-50)
+        setMessages(msgs)
+      }, (error) => {
+        console.error('Chat RTDB Error:', error)
+        toast.error('Ошибка подключения к чату')
+      })
+    } catch (e) {
+      console.error('Chat Init Error:', e)
+    }
   }, [])
 
   async function send(e: React.FormEvent) {
     e.preventDefault()
-    if (!newMsg.trim() || !profile) return
-    await push(ref(rtdb, 'chat'), { userId: profile.nickname, nickname: profile.nickname, avatarUrl: profile.avatarUrl, text: newMsg.trim(), type: 'user', createdAt: Date.now() })
-    setNewMsg('')
+    if (!newMsg.trim()) return
+    if (!profile) {
+      toast.error('Войдите в систему, чтобы писать в чат')
+      return
+    }
+    try {
+      await push(ref(rtdb, 'chat'), { 
+        userId: profile.nickname, 
+        nickname: profile.nickname, 
+        avatarUrl: profile.avatarUrl, 
+        text: newMsg.trim(), 
+        type: 'user', 
+        createdAt: Date.now() 
+      })
+      setNewMsg('')
+    } catch (e: any) {
+      console.error('Send message error:', e)
+      toast.error('Не удалось отправить сообщение')
+    }
   }
 
   return (
@@ -94,7 +128,7 @@ function Leaderboard() {
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>([])
   useEffect(() => {
     (async () => { try {
-      const snap = await getDocs(query(collection(db, 'users'), orderBy('totalWon', 'desc'), limit(10)))
+      const snap = await getDocs(query(collection(db, 'users'), orderBy('balance', 'desc'), limit(10)))
       setLeaders(snap.docs.map(d => ({ nickname: d.data().nickname, avatarUrl: d.data().avatarUrl, totalWon: d.data().totalWon || 0, balance: d.data().balance || 0 })))
     } catch {} })()
   }, [])
@@ -106,7 +140,7 @@ function Leaderboard() {
           <span className={`text-xs font-bold w-5 text-center ${i < 3 ? 'text-gold' : 'text-muted-foreground'}`}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}</span>
           <img src={l.avatarUrl} alt="" className="w-6 h-6 rounded-full bg-marble" />
           <span className="text-xs font-medium flex-1 truncate">{l.nickname}</span>
-          <span className="text-xs text-gold font-semibold">{formatBalance(l.totalWon)}</span>
+          <span className="text-xs text-gold font-semibold">{formatDynamicBalance(l.balance)}</span>
         </div>))}</div>
     </Card>
   )
@@ -114,20 +148,53 @@ function Leaderboard() {
 
 export function LobbyPage() {
   const { settings } = useAuth()
+  const [lobbyTab, setLobbyTab] = useState<'all' | 'multiplayer'>('all')
+
   const sorted = GAME_CARDS.filter(g => { const c = settings?.gamesConfig?.[g.type]; return !c || c.enabled })
     .sort((a, b) => (settings?.gamesConfig?.[a.type]?.order ?? 99) - (settings?.gamesConfig?.[b.type]?.order ?? 99))
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <Header />
       <div className="fixed inset-0 pointer-events-none"><div className="absolute top-0 left-1/4 w-96 h-96 bg-gold/5 rounded-full blur-[150px]" /><div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-velvet/10 rounded-full blur-[120px]" /></div>
+      
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 mb-3"><Star className="w-5 h-5 text-gold" /><span className="text-sm text-gold font-medium uppercase tracking-widest">Премиум коллекция</span><Star className="w-5 h-5 text-gold" /></div>
-          <h2 className="font-serif text-4xl sm:text-5xl font-bold text-foreground mb-3">Выбери игру</h2>
-          <p className="text-muted-foreground text-lg">Испытай удачу в лучших мини-играх</p>
+          <h2 className="font-serif text-4xl sm:text-5xl font-bold text-foreground mb-3">
+            {lobbyTab === 'all' ? 'Испытай удачу' : 'За общим столом'}
+          </h2>
+          
+          <div className="flex justify-center gap-4 mt-6">
+            <button 
+              onClick={() => setLobbyTab('all')}
+              className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${lobbyTab === 'all' ? 'bg-gold text-velvet-dark shadow-glow-gold' : 'bg-marble/20 text-muted-foreground hover:bg-marble/40'}`}
+            >
+              Все игры
+            </button>
+            <button 
+              onClick={() => setLobbyTab('multiplayer')}
+              className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${lobbyTab === 'multiplayer' ? 'bg-gold text-velvet-dark shadow-glow-gold' : 'bg-marble/20 text-muted-foreground hover:bg-marble/40'}`}
+            >
+              Мультиплеер
+            </button>
+          </div>
         </div>
+
         <div className="grid lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3"><div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">{sorted.map((g, i) => (<motion.div key={g.type} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}><GameCard {...g} config={settings?.gamesConfig?.[g.type]} /></motion.div>))}</div></div>
+          <div className="lg:col-span-3">
+            {lobbyTab === 'all' ? (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {sorted.map((g, i) => (
+                  <motion.div key={g.type} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+                    <GameCard {...g} config={settings?.gamesConfig?.[g.type]} />
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <MultiplayerLobby />
+            )}
+          </div>
           <div className="space-y-5"><Leaderboard /><ChatPanel /></div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Bomb, Diamond, Coins } from 'lucide-react'
 import { sounds } from '@/lib/sounds'
+import { applyLuck } from '@/lib/luck'
 import type { GameResult } from '@/types'
 
 interface Props {
@@ -48,10 +49,29 @@ export function MinesGame({ bet, luck, houseEdge, balance, onResult }: Props) {
   const revealCell = useCallback((idx: number) => {
     if (state !== 'playing' || revealed.has(idx)) return
 
-    if (mines.has(idx)) {
+    let currentMines = mines
+
+    // Подкрутка: спасаем игрока от мины, квантово перемещая её
+    if (currentMines.has(idx)) {
+      const saveChance = applyLuck(0, luck)
+      if (Math.random() < saveChance) {
+        const emptyCells = Array.from({ length: TOTAL_CELLS }, (_, i) => i)
+          .filter(i => !currentMines.has(i) && !revealed.has(i) && i !== idx)
+        if (emptyCells.length > 0) {
+          const newMineIdx = emptyCells[Math.floor(Math.random() * emptyCells.length)]
+          const newMines = new Set(currentMines)
+          newMines.delete(idx)
+          newMines.add(newMineIdx)
+          setMines(newMines)
+          currentMines = newMines // Обновляем локальную переменную для дальнейшей логики
+        }
+      }
+    }
+
+    if (currentMines.has(idx)) {
       // BOOM!
       sounds.minesBoom()
-      setRevealed(new Set([...revealed, idx, ...mines]))
+      setRevealed(new Set([...revealed, idx, ...currentMines]))
       setState('boom')
       onResult('lose', 0, { mineCount, revealed: revealed.size, hitMine: idx })
       return
@@ -60,7 +80,7 @@ export function MinesGame({ bet, luck, houseEdge, balance, onResult }: Props) {
     sounds.minesSafe()
     const newRevealed = new Set([...revealed, idx])
     setRevealed(newRevealed)
-    const safeCells = [...newRevealed].filter(i => !mines.has(i)).length
+    const safeCells = [...newRevealed].filter(i => !currentMines.has(i)).length
     const mult = calcMultiplier(safeCells, mineCount)
     setMultiplier(mult)
 
@@ -105,7 +125,7 @@ export function MinesGame({ bet, luck, houseEdge, balance, onResult }: Props) {
             {state === 'boom' ? '💥 БУМ!' : `${multiplier.toFixed(2)}×`}
           </p>
           {state === 'cashed' && (
-            <p className="text-neon-green font-bold mt-1">+{Math.floor(bet * multiplier).toLocaleString()} фишек</p>
+            <p className="text-neon-green font-bold mt-1">+${Math.floor(bet * multiplier).toLocaleString()}</p>
           )}
         </div>
       )}
@@ -121,7 +141,7 @@ export function MinesGame({ bet, luck, houseEdge, balance, onResult }: Props) {
             <motion.button key={idx} onClick={() => revealCell(idx)} disabled={!canClick}
               whileHover={canClick ? { scale: 1.1 } : {}}
               whileTap={canClick ? { scale: 0.95 } : {}}
-              className={`w-12 h-12 sm:w-14 sm:h-14 rounded-lg flex items-center justify-center text-lg font-bold transition-all border ${
+              className={`w-16 h-16 sm:w-18 sm:h-18 rounded-xl flex items-center justify-center text-xl font-bold transition-all border ${
                 !isRevealed ? 'bg-marble-light border-gold/20 hover:border-gold/50 cursor-pointer'
                 : isMine ? 'bg-neon-red/20 border-neon-red/50'
                 : 'bg-neon-green/10 border-neon-green/30'

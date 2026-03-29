@@ -1,59 +1,66 @@
-import { clamp, randomInRange } from './utils'
+import { clamp } from './utils'
 
 /**
- * Система скрытой удачи (Hidden Luck System)
+ * Новая масштабируемая система удачи (Luck 0 - 10+)
  *
- * Параметр luck влияет на вероятности выигрыша, но незаметен для игрока.
- * Диапазон: 0.85 (невезучий) – 1.15 (везучий), нейтраль = 1.0
+ * luck = 0: обычный рандом (честная или базовая игра с houseEdge)
+ * luck = 10: почти 100% шанс выигрыша
+ * luck < 0: отрицательная удача (подкрутка против игрока)
  */
 
-const LUCK_MIN = 0.85
-const LUCK_MAX = 1.15
-const LUCK_DEFAULT = 1.0
-const LUCK_DRIFT = 0.02 // Максимальное изменение за обновление
-const GAMES_PER_LUCK_UPDATE = 10 // Обновляем luck каждые N игр
+const LUCK_MIN = -10.0
+const LUCK_MAX = 50.0
+const LUCK_DEFAULT = 0.0
 
-/** Начальное значение luck для нового игрока */
 export function getInitialLuck(): number {
   return LUCK_DEFAULT
 }
 
-/**
- * Обновляет luck после очередной порции игр.
- * Luck дрейфует случайно, медленно и незаметно.
- */
-export function updateLuck(currentLuck: number, gamesPlayed: number): number {
-  // Обновляем только каждые N игр
-  if (gamesPlayed % GAMES_PER_LUCK_UPDATE !== 0) {
-    return currentLuck
-  }
-
-  const drift = randomInRange(-LUCK_DRIFT, LUCK_DRIFT)
-  return clamp(currentLuck + drift, LUCK_MIN, LUCK_MAX)
+export function updateLuck(currentLuck: number, _gamesPlayed: number): number {
+  return currentLuck
 }
 
 /**
  * Применяет luck к базовой вероятности.
- * Пример: baseChance = 0.3, luck = 1.1 → 0.33
+ * Формула: 
+ * При luck >= 0 -> finalChance = baseChance + (1 - baseChance) * (luck / 10)
+ * При luck < 0  -> finalChance = baseChance - baseChance * (|luck| / 10)
  */
 export function applyLuck(baseChance: number, luck: number): number {
-  return clamp(baseChance * luck, 0, 1)
+  if (luck < 0) {
+    // Подкрутка против игрока в 2 раза сильнее (теперь 100% проигрыш при luck = -5)
+    const penalty = clamp(Math.abs(luck) / 5, 0, 1)
+    return clamp(baseChance - baseChance * penalty, 0, 1)
+  }
+  
+  // Подкрутка за игрока в 2 раза слабее (теперь 100% выигрыш при luck = 20)
+  const bonus = clamp(luck / 20, 0, 1)
+  return clamp(baseChance + (1 - baseChance) * bonus, 0, 1)
 }
 
-/**
- * Генерирует crash-множитель с учётом luck.
- * Чем выше luck, тем позже crash.
+/** 
+ * Генерирует crash-множитель с учётом макро-удачи.
+ * При 0 — стандартный график.
+ * При 10 — множитель будет космическим.
  */
 export function generateCrashMultiplier(luck: number, houseEdge: number): number {
-  const effectiveHouseEdge = houseEdge / luck
+  // Коэффициент удачи для краша теперь тоже слабее/сильнее
+  const bonus = luck > 0 ? clamp(luck / 20, 0, 1) : clamp(luck / 5, -1, 0)
+  const effectiveHouseEdge = clamp(houseEdge - houseEdge * bonus, 0, 0.99)
+  
   const random = Math.random()
-
-  // Формула: e / (1 - r * (1 - e)) где e — house edge
-  if (random >= 1 - effectiveHouseEdge) {
-    return 1.0 // Instant crash
+  if (random >= 1 - effectiveHouseEdge) return 1.0
+  
+  let mult = Math.max(1, (1 - effectiveHouseEdge) / (1 - random))
+  
+  // Дополнительный множитель от удачи (ослаблен в 2 раза для позитивной)
+  if (luck > 0) {
+    mult += (luck * mult * Math.random() * 0.25)
+  } else if (luck < 0) {
+    mult *= clamp(1 - (Math.abs(luck) / 5), 0.05, 1)
   }
-
-  return Math.max(1, (1 - effectiveHouseEdge) / (1 - random))
+  
+  return mult
 }
 
-export { LUCK_MIN, LUCK_MAX, GAMES_PER_LUCK_UPDATE }
+export { LUCK_MIN, LUCK_MAX }

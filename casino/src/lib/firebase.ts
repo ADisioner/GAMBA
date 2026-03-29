@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 import { getDatabase } from 'firebase/database'
+import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,7 +16,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 export const db = getFirestore(app)
-export const rtdb = getDatabase(app)
+export const rtdb = getDatabase(app, import.meta.env.VITE_FIREBASE_DATABASE_URL)
+export const auth = getAuth(app)
+export const googleProvider = new GoogleAuthProvider()
 
 /** Никнейм админа — проверяется для доступа к админ-панели */
 export const ADMIN_NICKNAME = import.meta.env.VITE_ADMIN_NICKNAME || 'Aboba'

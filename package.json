@@ -1,0 +1,12 @@
+{
+  "name": "gamba-tycoon-monorepo",
+  "version": "1.0.0",
+  "description": "Unified entry point for PMC: Tycoon",
+  "scripts": {
+    "install-all": "npm install && cd server && npm install && cd ../casino && npm install",
+    "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix casino\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

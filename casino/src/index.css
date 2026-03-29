@@ -122,6 +122,27 @@
   box-shadow: 0 0 20px rgba(255, 50, 50, 0.3), 0 0 60px rgba(255, 50, 50, 0.1);
 }
 
+.shadow-glow-emerald {
+  box-shadow: 0 4px 12px -2px rgba(16, 185, 129, 0.2);
+}
+.shadow-glow-gold {
+  box-shadow: 0 4px 12px -2px rgba(212, 175, 55, 0.2);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.3);
+}
+
 /* Text glow */
 .text-glow-gold {
   text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);

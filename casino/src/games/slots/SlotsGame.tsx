@@ -19,10 +19,11 @@ function generateReelStrip(length: number): string[] {
 }
 
 function getWeightedSymbol(luck: number): string {
-  // Luck повышает шанс ценных символов (индексы 4-5 = 💎, 7️⃣)
+  // Luck 0-10. При luck=10 огромный шанс выпадения 💎 и 7️⃣
+  const bonus = Math.max(0, luck / 10)
   const weights = SYMBOLS.map((_, i) => {
     const base = SYMBOLS.length - i
-    return i >= 4 ? base * luck : base
+    return i >= 4 ? base + (base * 100 * bonus) : base
   })
   const total = weights.reduce((a, b) => a + b, 0)
   let rand = Math.random() * total
@@ -80,7 +81,7 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
           key={i}
           animate={spinning ? { opacity: [1, 0.6, 1] } : { opacity: 1 }}
           transition={spinning ? { duration: 0.12, repeat: Infinity } : { duration: 0.3 }}
-          className={`w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center text-4xl sm:text-5xl transition-all ${
+          className={`w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center text-5xl sm:text-6xl transition-all ${
             i === 1 ? 'bg-marble-light/80 scale-110 relative z-10' : 'opacity-40'
           }`}
         >
@@ -100,6 +101,7 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
 
 export function SlotsGame({ bet, luck, houseEdge, balance, onResult }: Props) {
   const [spinning, setSpinning] = useState(false)
+  const [isAuto, setIsAuto] = useState(false)
   const [finalSymbols, setFinalSymbols] = useState<string[]>(['🍒', '🍋', '🍊'])
   const [stoppedReels, setStoppedReels] = useState(0)
   const [lastWin, setLastWin] = useState<number | null>(null)
@@ -107,7 +109,10 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult }: Props) {
   const resultProcessed = useRef(false)
 
   const spin = useCallback(async () => {
-    if (spinning || bet > balance) return
+    if (spinning || bet > balance) {
+      if (bet > balance && isAuto) setIsAuto(false)
+      return
+    }
     sounds.bet()
     setSpinning(true)
     setLastWin(null)
@@ -115,19 +120,30 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult }: Props) {
     setStoppedReels(0)
     resultProcessed.current = false
 
-    // Генерируем финальные символы заранее
-    const finals: string[] = []
-    for (let i = 0; i < 3; i++) finals.push(getWeightedSymbol(luck))
+    // При АВТО-катке удача снижается на 30%
+    const currentLuck = isAuto ? luck * 0.7 : luck
 
-    // С учётом luck — шанс на выигрышную линию
-    const winChance = applyLuck(0.25, luck)
+    const finals: string[] = []
+    for (let i = 0; i < 3; i++) finals.push(getWeightedSymbol(currentLuck))
+
+    const winChance = applyLuck(0.25, currentLuck)
     if (Math.random() < winChance) {
-      const sym = getWeightedSymbol(luck * 1.1)
+      const sym = getWeightedSymbol(currentLuck * 1.1)
       finals[0] = sym; finals[1] = sym; finals[2] = sym
     }
 
     setFinalSymbols(finals)
-  }, [bet, balance, spinning, luck])
+  }, [bet, balance, spinning, luck, isAuto])
+
+  // Автоматическая прокрутка
+  useEffect(() => {
+    if (isAuto && !spinning && bet <= balance) {
+      const timer = setTimeout(() => {
+        if (isAuto) spin()
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [isAuto, spinning, bet, balance, spin])
 
   /** Когда все 3 барабана остановились — считаем результат */
   const handleReelStop = useCallback(() => {
@@ -216,26 +232,35 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult }: Props) {
               🎉 ВЫИГРЫШ!
             </p>
             <p className="text-2xl font-bold text-gold-light mt-1">
-              +{lastWin.toLocaleString()} фишек
+              +${lastWin.toLocaleString()}
             </p>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Spin button */}
-      <motion.div whileTap={{ scale: 0.95 }}>
-        <Button onClick={spin} disabled={spinning || bet > balance} size="xl"
-          className="w-52 text-lg font-bold h-14">
-          {spinning ? (
-            <span className="flex items-center gap-2">
-              <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.5, repeat: Infinity, ease: 'linear' }}>
-                🎰
-              </motion.span>
-              Крутим...
-            </span>
-          ) : '🎰 КРУТИТЬ'}
-        </Button>
-      </motion.div>
+      {/* Кнопки управления */}
+      <div className="flex items-center gap-4">
+        <label className="flex flex-col items-center gap-1 cursor-pointer">
+          <span className="text-xs font-bold text-gold/70">АВТО</span>
+          <div className={`w-14 h-7 rounded-full transition-colors flex items-center px-1 ${isAuto ? 'bg-gold' : 'bg-gray-800 border border-gold/30'}`}
+               onClick={() => setIsAuto(!isAuto)}>
+             <motion.div className="w-5 h-5 rounded-full bg-white shadow-md"
+                         animate={{ x: isAuto ? 28 : 0 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} />
+          </div>
+        </label>
+
+        <motion.div whileTap={{ scale: 0.95 }}>
+          <Button onClick={spin} disabled={spinning || bet > balance} size="xl"
+            className="w-48 sm:w-52 text-lg font-bold h-14">
+            {spinning ? (
+              <span className="flex items-center gap-2">
+                <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.5, repeat: Infinity, ease: 'linear' }}>🎰</motion.span>
+                Крутим...
+              </span>
+            ) : '🎰 КРУТИТЬ'}
+          </Button>
+        </motion.div>
+      </div>
 
       {/* Paytable */}
       <div className="mt-8 grid grid-cols-3 gap-2 text-center text-xs text-muted-foreground">

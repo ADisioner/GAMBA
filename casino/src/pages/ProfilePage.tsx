@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { User, Save, History, Trophy, TrendingDown } from 'lucide-react'
+import { User, Save, History, Trophy, TrendingDown, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Header } from '@/components/layout/Header'
 import { useAuth } from '@/contexts/AuthContext'
-import { formatBalance } from '@/lib/utils'
+import { formatBalance, formatCompactBalance } from '@/lib/utils'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { toast } from 'sonner'
@@ -25,14 +25,14 @@ export function ProfilePage() {
   }
 
   const stats = [
-    { label: 'Баланс', value: formatBalance(profile.balance), icon: <Trophy className="w-5 h-5 text-gold" /> },
+    { label: 'Баланс', value: formatCompactBalance(profile.balance), icon: <Trophy className="w-5 h-5 text-gold" /> },
     { label: 'Всего игр', value: profile.totalGamesPlayed.toString(), icon: <History className="w-5 h-5 text-gold" /> },
-    { label: 'Выиграно', value: formatBalance(profile.totalWon), icon: <TrendingDown className="w-5 h-5 text-neon-green" /> },  
-    { label: 'Проиграно', value: formatBalance(profile.totalLost), icon: <TrendingDown className="w-5 h-5 text-neon-red" /> },
+    { label: 'Выиграно', value: formatCompactBalance(profile.totalWon), icon: <TrendingUp className="w-5 h-5 text-neon-green" /> },  
+    { label: 'Проиграно', value: formatCompactBalance(profile.totalLost), icon: <TrendingDown className="w-5 h-5 text-neon-red" /> },
   ]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <Header />
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 right-1/4 w-80 h-80 bg-gold/5 rounded-full blur-[150px]" />
@@ -50,12 +50,12 @@ export function ProfilePage() {
           </div>
 
           {/* Stats grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
             {stats.map(s => (
-              <Card key={s.label} className="text-center p-4">
-                <div className="flex justify-center mb-2">{s.icon}</div>
-                <p className="text-lg font-bold text-foreground">{s.value}</p>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
+              <Card key={s.label} className="text-center p-3 sm:p-4 flex flex-col justify-center items-center h-full min-h-[110px]">
+                <div className="mb-2 shrink-0">{s.icon}</div>
+                <p className="text-sm sm:text-base font-bold text-foreground break-all leading-tight">{s.value}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 uppercase tracking-wider">{s.label}</p>
               </Card>
             ))}
           </div>

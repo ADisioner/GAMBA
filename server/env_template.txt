@@ -1,0 +1,3 @@
+DATABASE_URL="postgresql://user:password@localhost:5432/pmc_contract?schema=public"
+JWT_SECRET="gamba-pmc-secret-2026"
+PORT=4000

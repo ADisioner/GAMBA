@@ -1,73 +1,56 @@
-# React + TypeScript + Vite
+# GAMBA — Premium Multiplayer Casino 🎰
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Полноценная платформа симулятора казино с поддержкой мультиплеера в реальном времени.
 
-Currently, two official plugins are available:
+## ✨ Особенности
+- **Мультиплеер**: Играйте в Блэкджек и Видео-Покер с друзьями или другими игроками через Firebase Realtime Database.
+- **Игры**: 
+  - Блэкджек (Мультиплеер + Соло)
+  - Видео-Покер (Мультиплеер + Соло)
+  - Слоты (Golden Slots)
+  - Рулетка
+  - Crash
+  - Mines
+- **Система Удачи (Luck)**: Динамический расчет вероятностей на основе истории игр.
+- **Профили**: Кастомизация аватаров, отслеживание статистики и достижений.
+- **Живая лента**: Отображение ставок всех игроков в режиме реального времени.
+- **Админ-панель**: Управление конфигурацией игр и статистикой.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠 Технологический стек
+- **Frontend**: React 19, Vite, Tailwind CSS (v4)
+- **Backend/DB**: Firebase (Auth, Firestore, Realtime Database)
+- **State**: React Context API
+- **Animations**: Framer Motion, Lucide React icons
 
-## React Compiler
+## 🚀 Быстрый старт
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. Установка зависимостей
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 2. Настройка Firebase
+Создайте проект в [Firebase Console](https://console.firebase.google.com/) и включите следующие сервисы:
+- Authentication (Email/Password, Anonymous)
+- Firestore Database
+- Realtime Database
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 3. Конфигурация (.env)
+Создайте файл `.env` в корневом каталоге и добавьте ваши ключи:
+```env
+VITE_FIREBASE_API_KEY=your_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project
+VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_DATABASE_URL=https://your_project-default-rtdb.firebaseio.com
 ```
+
+### 4. Запуск локально
+```bash
+npm run dev
+```
+
+## 📜 Правила безопасности
+Для корректной работы мультиплеера и базы данных необходимо применить правила из файлов `firestore.rules` и `database.rules.json` в консоли Firebase.
