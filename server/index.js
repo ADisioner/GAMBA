@@ -45,15 +45,25 @@ const authenticateToken = async (req, res, next) => {
   
   if (!token) return res.status(401).json({ error: 'Auth missing' });
 
+  let nickname;
   try {
-    const nickname = decodeURIComponent(token);
+    nickname = decodeURIComponent(token);
+  } catch (e) {
+    console.error('[AUTH] decodeURIComponent failed:', token, e);
+    return res.status(403).json({ error: 'Invalid token encoding' });
+  }
+
+  try {
     const userSnap = await db.collection('users').doc(nickname).get();
-    if (!userSnap.exists) return res.status(404).json({ error: 'User not found' });
-    
+    if (!userSnap.exists) {
+      console.warn('[AUTH] User not found in Firestore:', nickname);
+      return res.status(404).json({ error: 'User not found' });
+    }
     req.user = { nickname, ...userSnap.data() };
     next();
   } catch (err) {
-    return res.status(403).json({ error: 'Invalid auth' });
+    console.error('[AUTH] Firestore lookup error for:', nickname, err);
+    return res.status(403).json({ error: 'Invalid auth', detail: err.message });
   }
 };
 
