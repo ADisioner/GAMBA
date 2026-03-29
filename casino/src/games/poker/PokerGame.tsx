@@ -10,6 +10,7 @@ import type { GameResult } from '@/types'
 interface Props {
   bet: number; luck: number; houseEdge: number; balance: number
   onResult: (result: GameResult, payout: number, details: Record<string, unknown>) => Promise<void>
+  takeBet: (amount: number) => Promise<boolean>
 }
 
 type CardSuit = '♠' | '♥' | '♦' | '♣'
@@ -127,7 +128,7 @@ function CardView({ card, index, held, toggleHold, disabled, size = 'md' }: {
   )
 }
 
-export function PokerGame({ bet, luck, houseEdge, balance, onResult, multiplayer }: Props & { multiplayer?: any }) {
+export function PokerGame({ bet, luck, houseEdge, balance, onResult, takeBet, multiplayer }: Props & { multiplayer?: any }) {
   const isMulti = !!multiplayer?.room
   const room = multiplayer?.room
   const { profile } = useAuth()
@@ -139,8 +140,12 @@ export function PokerGame({ bet, luck, houseEdge, balance, onResult, multiplayer
   const [resultMessage, setResultMessage] = useState('')
   const [lastWin, setLastWin] = useState<number | null>(null)
 
-  const deal = useCallback(() => {
+  const deal = useCallback(async () => {
     if (bet > balance || gameState === 'dealt') return
+    
+    const success = await takeBet(bet)
+    if (!success) return
+
     sounds.bet()
     setResultMessage('')
     setLastWin(null)

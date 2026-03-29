@@ -9,6 +9,7 @@ import type { GameResult } from '@/types'
 interface Props {
   bet: number; luck: number; houseEdge: number; balance: number
   onResult: (result: GameResult, payout: number, details: Record<string, unknown>) => Promise<void>
+  takeBet: (amount: number) => Promise<boolean>
 }
 
 const GRID_SIZE = 5
@@ -29,22 +30,26 @@ function calcMultiplier(safeRevealed: number, mineCount: number): number {
   return parseFloat(mult.toFixed(2))
 }
 
-export function MinesGame({ bet, luck, houseEdge, balance, onResult }: Props) {
+export function MinesGame({ bet, luck, houseEdge, balance, onResult, takeBet }: Props) {
   const [mineCount, setMineCount] = useState(5)
   const [mines, setMines] = useState<Set<number>>(new Set())
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
   const [state, setState] = useState<'setup' | 'playing' | 'boom' | 'cashed'>('setup')
   const [multiplier, setMultiplier] = useState(1)
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback(async () => {
     if (bet > balance) return
+    
+    const success = await takeBet(bet)
+    if (!success) return
+
     sounds.bet()
     const m = generateMines(mineCount)
     setMines(m)
     setRevealed(new Set())
     setState('playing')
     setMultiplier(1)
-  }, [bet, balance, mineCount])
+  }, [bet, balance, mineCount, takeBet])
 
   const revealCell = useCallback((idx: number) => {
     if (state !== 'playing' || revealed.has(idx)) return

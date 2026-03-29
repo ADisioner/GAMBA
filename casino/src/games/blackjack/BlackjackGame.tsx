@@ -14,6 +14,7 @@ import type { GameResult, MultiplayerRoom, PlayerStatus, RoomPlayer } from '@/ty
 interface Props {
   bet: number; luck: number; houseEdge: number; balance: number
   onResult: (result: GameResult, payout: number, details: Record<string, unknown>) => Promise<void>
+  takeBet: (amount: number) => Promise<boolean>
   multiplayer?: {
     room: MultiplayerRoom | null
     joinRoom: (seat: number) => Promise<void>
@@ -73,7 +74,7 @@ function CardView({ card, delay = 0, size = 'md' }: { card: Card; delay?: number
   )
 }
 
-export function BlackjackGame({ bet, luck, houseEdge, balance, onResult, multiplayer }: Props) {
+export function BlackjackGame({ bet, luck, houseEdge, balance, onResult, takeBet, multiplayer }: Props) {
   const { profile } = useAuth()
   const isMulti = !!multiplayer?.room
   const room = multiplayer?.room
@@ -92,8 +93,12 @@ export function BlackjackGame({ bet, luck, houseEdge, balance, onResult, multipl
   const [message, setMessage] = useState('')
 
   // --- SINGLE PLAYER LOGIC ---
-  const deal = useCallback(() => {
+  const deal = useCallback(async () => {
     if (bet > balance || isMulti) return
+    
+    const success = await takeBet(bet)
+    if (!success) return
+
     sounds.bet()
     let d = createDeck()
     let pH = [d.pop()!, d.pop()!]
@@ -192,8 +197,13 @@ export function BlackjackGame({ bet, luck, houseEdge, balance, onResult, multipl
     }
   }, [gameState, deck, dealerHand, playerHand, bet, luck, onResult, isMulti])
 
-  const doubleDown = useCallback(() => {
+  const doubleDown = useCallback(async () => {
     if (gameState !== 'playing' || playerHand.length !== 2 || bet * 2 > balance || isMulti) return
+    
+    // Дозакупаем ставку (вторая половина дабла)
+    const success = await takeBet(bet)
+    if (!success) return
+
     const d = [...deck]; const card = d.pop()!
     const newHand = [...playerHand, card]
     setDeck(d); setPlayerHand(newHand)

@@ -12,6 +12,7 @@ import type { GameResult, MultiplayerRoom, PlayerStatus } from '@/types'
 interface Props {
   bet: number; luck: number; houseEdge: number; balance: number
   onResult: (result: GameResult, payout: number, details: Record<string, unknown>) => Promise<void>
+  takeBet: (amount: number) => Promise<boolean>
   multiplayer?: {
     room: MultiplayerRoom | null
     joinRoom: (seat: number) => Promise<void>
@@ -58,7 +59,7 @@ function getPayout(betType: BetType, result: number): number {
 /** Порядок чисел на реальном европейском колесе рулетки */
 const WHEEL_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26]
 
-export function RouletteGame({ bet, luck, houseEdge, balance, onResult, multiplayer }: Props) {
+export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet, multiplayer }: Props) {
   const { profile } = useAuth()
   const isMulti = !!multiplayer?.room
   const room = multiplayer?.room
@@ -130,6 +131,7 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, multipla
     
     if (isMulti) {
       if (!isHost) return
+      // В мультиплеере ставка УЖЕ списана в GamePage при нажатии "Сделать ставку"
       const winNumber = Math.floor(Math.random() * 37)
       
       await update(ref(rtdb, `rooms/roulette/${room?.id}`), {
@@ -139,6 +141,9 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, multipla
       })
       return 
     }
+
+    const success = await takeBet(bet)
+    if (!success) return
 
     sounds.bet()
     const winningNumbers = NUMBERS.filter(n => getPayout(selectedBet, n) > 0)

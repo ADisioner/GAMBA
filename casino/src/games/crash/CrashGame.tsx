@@ -12,6 +12,7 @@ import type { GameResult, MultiplayerRoom, PlayerStatus } from '@/types'
 interface Props {
   bet: number; luck: number; houseEdge: number; balance: number
   onResult: (result: GameResult, payout: number, details: Record<string, unknown>) => Promise<void>
+  takeBet: (amount: number) => Promise<boolean>
   multiplayer?: {
     room: MultiplayerRoom | null
     joinRoom: (seat: number) => Promise<void>
@@ -21,7 +22,7 @@ interface Props {
   }
 }
 
-export function CrashGame({ bet, luck, houseEdge, balance, onResult, multiplayer }: Props) {
+export function CrashGame({ bet, luck, houseEdge, balance, onResult, takeBet, multiplayer }: Props) {
   const { profile } = useAuth()
   const isMulti = !!multiplayer?.room
   const room = multiplayer?.room
@@ -98,6 +99,9 @@ export function CrashGame({ bet, luck, houseEdge, balance, onResult, multiplayer
     }
 
     // Single Player
+    const success = await takeBet(bet)
+    if (!success) return
+
     sounds.bet()
     const cp = generateCrashMultiplier(luck, houseEdge)
     setCrashPoint(cp)

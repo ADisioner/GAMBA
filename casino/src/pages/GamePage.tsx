@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { formatBalance, formatDynamicBalance } from '@/lib/utils'
 import { doc, updateDoc, addDoc, collection, setDoc, increment } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { toast } from 'sonner'
 import { updateLuck } from '@/lib/luck'
 import { useMultiplayerRoom } from '@/hooks/useMultiplayerRoom'
 import type { GameType, GameResult } from '@/types'
@@ -68,22 +69,36 @@ export function GamePage() {
     }
   }, [room?.id])
 
+  const takeBet = useCallback(async (amount: number) => {
+    if (!profile || profile.balance < amount) {
+      toast.error('Недостаточно средств')
+      return false
+    }
+    
+    try {
+      await updateDoc(doc(db, 'users', profile.nickname), {
+        balance: increment(-amount),
+        updatedAt: Date.now()
+      })
+      return true
+    } catch (e) {
+      console.error('Take bet error:', e)
+      return false
+    }
+  }, [profile])
+
   const recordGameResult = useCallback(async (result: GameResult, payout: number, details: Record<string, unknown>) => {
     if (!profile) return
 
-    const balanceChange = result === 'win' ? payout - bet : result === 'push' ? 0 : -bet
-    const newBalance = Math.max(0, profile.balance + balanceChange)
-    const newGamesPlayed = profile.totalGamesPlayed + 1
+    // ВАЖНО: ставка уже списана через takeBet(), поэтому тут только начисляем выгоду
+    const balanceChange = result === 'win' ? payout : result === 'push' ? bet : 0
     
-    const currentLuck = room ? averageLuck : profile.luck
-    const newLuck = updateLuck(profile.luck, newGamesPlayed)
-
     addLiveEvent({
       nickname: profile.nickname,
       avatarUrl: profile.avatarUrl,
       game: GAME_TITLES[gameType],
       bet,
-      payout: result === 'win' ? payout : -bet,
+      payout: result === 'win' ? payout : (result === 'push' ? 0 : -bet),
       result
     })
 
@@ -92,7 +107,6 @@ export function GamePage() {
       totalGamesPlayed: increment(1),
       totalWon: result === 'win' ? increment(payout) : increment(0),
       totalLost: result === 'lose' ? increment(bet) : increment(0),
-      // Убрали удачу из авто-обновления, чтобы не затирать админские правки
       updatedAt: Date.now(),
     })
 
@@ -103,7 +117,6 @@ export function GamePage() {
       result,
       payout: result === 'win' ? payout : 0,
       details,
-      luckAtTime: currentLuck,
       createdAt: Date.now(),
     })
 
@@ -114,8 +127,7 @@ export function GamePage() {
       updatedAt: Date.now(),
     }, { merge: true })
 
-    await refreshProfile()
-  }, [profile, bet, gameType, refreshProfile, addLiveEvent, room, averageLuck])
+  }, [profile, bet, gameType, addLiveEvent])
 
   function adjustBet(delta: number) {
     setBet(prev => Math.max(effectiveMinBet, Math.min(profile?.balance || 0, prev + delta)))
@@ -127,11 +139,18 @@ export function GamePage() {
     houseEdge: settings?.houseEdge || 0.03,
     balance: profile.balance,
     onResult: recordGameResult,
+    takeBet,
     multiplayer: roomId ? {
       room,
       joinRoom,
       leaveRoom,
-      placeBet,
+      placeBet: async (amount: number) => {
+        const success = await takeBet(amount)
+        if (success) {
+          await placeBet(amount)
+          toast.success(`Ставка ${amount} принята`)
+        }
+      },
       updatePlayerStatus
     } : undefined
   }

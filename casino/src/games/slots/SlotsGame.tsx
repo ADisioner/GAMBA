@@ -8,6 +8,7 @@ import type { GameResult } from '@/types'
 interface Props {
   bet: number; luck: number; houseEdge: number; balance: number
   onResult: (result: GameResult, payout: number, details: Record<string, unknown>) => Promise<void>
+  takeBet: (amount: number) => Promise<boolean>
 }
 
 const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣']
@@ -99,7 +100,7 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
   )
 }
 
-export function SlotsGame({ bet, luck, houseEdge, balance, onResult }: Props) {
+export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: Props) {
   const [spinning, setSpinning] = useState(false)
   const [isAuto, setIsAuto] = useState(false)
   const [finalSymbols, setFinalSymbols] = useState<string[]>(['🍒', '🍋', '🍊'])
@@ -113,6 +114,10 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult }: Props) {
       if (bet > balance && isAuto) setIsAuto(false)
       return
     }
+
+    const success = await takeBet(bet)
+    if (!success) return
+
     sounds.bet()
     setSpinning(true)
     setLastWin(null)
