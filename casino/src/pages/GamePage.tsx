@@ -41,6 +41,24 @@ export function GamePage() {
     return <div className="min-h-screen flex items-center justify-center"><p>Игра не найдена</p></div>
   }
 
+  const isEnabled = settings?.gamesConfig?.[gameType]?.enabled !== false
+  if (!isEnabled) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center">
+        <div className="w-20 h-20 mb-6 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+          <Minus className="w-10 h-10 text-red-500" />
+        </div>
+        <h1 className="font-serif text-3xl font-bold text-foreground mb-2">Игра временно недоступна</h1>
+        <p className="text-muted-foreground max-w-md mb-8">
+          Администрация временно ограничила доступ к игре <span className="text-gold font-bold">{GAME_TITLES[gameType]}</span> для проведения технических работ или обновлений.
+        </p>
+        <Button onClick={() => navigate('/lobby')} className="bg-gold text-primary-foreground hover:bg-gold-light px-8">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Вернуться в лобби
+        </Button>
+      </div>
+    )
+  }
+
   const configMinBet = settings?.gamesConfig?.[gameType]?.minBet || 10
   const effectiveMinBet = room ? (room.minBet || configMinBet) : configMinBet
 
