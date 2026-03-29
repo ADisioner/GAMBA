@@ -192,7 +192,8 @@ export function BankPage() {
       // ПЕРЕНОСИМ ЛОГИКУ ПЕРЕВОДА НА СЕРВЕР
       // Это решает ошибку "Missing or insufficient permissions", 
       // так как обычный игрок не может менять баланс другого игрока в Firestore напрямую.
-      const token = localStorage.getItem('token') || ''
+      // В этой системе токеном является никнейм пользователя
+      const token = localStorage.getItem('gamba_user') || sessionStorage.getItem('gamba_user') || ''
       const apiUrl = import.meta.env.VITE_API_URL || '/api'
       
       // Настраиваем URL: если в apiUrl уже есть '/api', то не добавляем его дважды.
