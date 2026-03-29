@@ -273,6 +273,91 @@ app.post('/api/pmc/end-turn', authenticateToken, async (req, res) => {
   res.json({ success: true, profit: totalProfit, week: user.pmc_currentWeek + 1 });
 });
 
+// --- БАНКОВСКИЕ ОПЕРАЦИИ ---
+app.post('/api/bank/transfer', authenticateToken, async (req, res) => {
+  const { target, amount } = req.body;
+  const senderId = req.user.nickname;
+  const amt = parseInt(amount);
+
+  if (isNaN(amt) || amt <= 0 || !target) {
+    return res.status(400).json({ error: 'Некорректная сумма или получатель' });
+  }
+
+  if (target.toLowerCase() === senderId.toLowerCase()) {
+    return res.status(400).json({ error: 'Нельзя перевести самому себе' });
+  }
+
+  try {
+    const db = admin.firestore();
+    
+    await db.runTransaction(async (transaction) => {
+      const senderRef = db.collection('users').doc(senderId);
+      const targetRef = db.collection('users').doc(target);
+      const settingsRef = db.collection('settings').doc('global');
+      
+      const [senderSnap, targetSnap, settingsSnap] = await Promise.all([
+        transaction.get(senderRef),
+        transaction.get(targetRef),
+        transaction.get(settingsRef)
+      ]);
+      
+      if (!senderSnap.exists) throw new Error('Ошибка отправителя');
+      if (!targetSnap.exists) throw new Error('Получатель не найден');
+      
+      const settings = settingsSnap.exists ? settingsSnap.data() : { bankTransferCommission: 20 };
+      const rate = settings.bankTransferCommission ?? 20;
+      const commission = Math.floor(amt * (rate / 100));
+      const totalDeduction = amt + commission;
+      
+      const senderData = senderSnap.data();
+      const targetData = targetSnap.data();
+      
+      if (senderData.balance < totalDeduction) {
+        throw new Error(`Недостаточно средств. Нужно ${totalDeduction} с учетом комиссии ${rate}%`);
+      }
+      
+      // 1. Обновление балансов
+      transaction.update(senderRef, {
+        balance: admin.firestore.FieldValue.increment(-totalDeduction),
+        updatedAt: Date.now()
+      });
+      
+      transaction.update(targetRef, {
+        balance: admin.firestore.FieldValue.increment(amt),
+        updatedAt: Date.now()
+      });
+      
+      // 2. Лог для отправителя
+      const sLogRef = db.collection('bank_transactions').doc();
+      transaction.set(sLogRef, {
+        userId: senderId,
+        type: 'withdraw',
+        amount: -totalDeduction,
+        balanceAfter: senderData.balance - totalDeduction,
+        description: `Перевод игроку ${target}`,
+        commission,
+        createdAt: Date.now()
+      });
+      
+      // 3. Лог для получателя
+      const rLogRef = db.collection('bank_transactions').doc();
+      transaction.set(rLogRef, {
+        userId: target,
+        type: 'deposit',
+        amount: amt,
+        balanceAfter: targetData.balance + amt,
+        description: `Перевод от ${senderId}`,
+        createdAt: Date.now()
+      });
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Transfer Error:', error);
+    res.status(500).json({ error: error.message || 'Ошибка сервера при переводе' });
+  }
+});
+
 app.post('/api/admin/deploy', authenticateToken, async (req, res) => {
   const adminNick = process.env.ADMIN_NICKNAME || 'Aboba';
   if (req.user.nickname !== adminNick) {

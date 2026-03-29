@@ -189,64 +189,29 @@ export function BankPage() {
     
     setLoading(true)
     try {
-      // ИСПОЛЬЗУЕМ АТОМАРНУЮ ТРАНЗАКЦИЮ
-      // Это гарантирует, что либо оба игрока обновятся, либо никто.
-      // И предотвращает уход в минус из-за лагов/нескольких вкладок.
-      await runTransaction(db, async (transaction) => {
-        const senderRef = doc(db, 'users', profile.nickname)
-        const recipientRef = doc(db, 'users', target)
-        
-        const [senderSnap, recipientSnap] = await Promise.all([
-          transaction.get(senderRef),
-          transaction.get(recipientRef)
-        ])
-        
-        if (!senderSnap.exists()) throw new Error('Ошибка отправителя')
-        if (!recipientSnap.exists()) throw new Error('Получатель не найден')
-        
-        const senderData = senderSnap.data() as UserProfile
-        const targetData = recipientSnap.data() as UserProfile
-        
-        // Повторная проверка баланса уже на сервере (внутри транзакции)
-        if (senderData.balance < totalDeduction) {
-          throw new Error('Недостаточно средств (Нужно ' + formatBalance(totalDeduction) + ' с учетом комиссии)')
-        }
-        
-        // 1. Списание у отправителя
-        transaction.update(senderRef, {
-          balance: senderData.balance - totalDeduction,
-          updatedAt: Date.now()
-        })
-        
-        // 2. Начисление получателю
-        transaction.update(recipientRef, {
-          balance: targetData.balance + amt,
-          updatedAt: Date.now()
-        })
-        
-        // 3. Лог для отправителя
-        const sLogRef = doc(collection(db, 'bank_transactions'))
-        transaction.set(sLogRef, {
-          userId: profile.nickname,
-          type: 'withdraw',
-          amount: -totalDeduction,
-          balanceAfter: senderData.balance - totalDeduction,
-          description: `Перевод игроку ${target}`,
-          commission,
-          createdAt: Date.now()
-        })
-        
-        // 4. Лог для получателя
-        const rLogRef = doc(collection(db, 'bank_transactions'))
-        transaction.set(rLogRef, {
-          userId: target,
-          type: 'deposit',
-          amount: amt,
-          balanceAfter: targetData.balance + amt,
-          description: `Перевод от ${profile.nickname}`,
-          createdAt: Date.now()
+      // ПЕРЕНОСИМ ЛОГИКУ ПЕРЕВОДА НА СЕРВЕР
+      // Это решает ошибку "Missing or insufficient permissions", 
+      // так как обычный игрок не может менять баланс другого игрока в Firestore напрямую.
+      const token = localStorage.getItem('token') || ''
+      const apiUrl = import.meta.env.VITE_API_URL || ''
+      
+      const response = await fetch(`${apiUrl}/api/bank/transfer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          target: target, 
+          amount: amt 
         })
       })
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Ошибка при переводе на сервере')
+      }
 
       await refreshProfile()
       setTransferAmount('')
