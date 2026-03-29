@@ -8,7 +8,7 @@ import { Header } from '@/components/layout/Header'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatBalance } from '@/lib/utils'
 import type { UserProfile, GameRecord, GameType } from '@/types'
-import { collection, getDocs, doc, updateDoc, query, orderBy, limit, deleteDoc, getDoc, setDoc, where } from 'firebase/firestore'
+import { collection, getDocs, doc, updateDoc, query, orderBy, limit, deleteDoc, getDoc, setDoc, where, writeBatch } from 'firebase/firestore'
 import { ref, push, onValue, remove } from 'firebase/database'
 import { db, rtdb } from '@/lib/firebase'
 import { toast } from 'sonner'
@@ -202,6 +202,39 @@ export function AdminPage() {
     } catch (e) {
       console.error(e)
       toast.error('Ошибка обновления игры')
+    }
+  }
+
+  async function resetAllStats() {
+    if (!confirm('ВНИМАНИЕ! Это действие сбросит ВЕСЬ оборот казино и статистику ВСЕХ игроков! Вы уверены?')) return
+    
+    try {
+      // 1. Сброс глобальной статистики
+      await setDoc(doc(db, 'settings', 'global_stats'), {
+        totalBets: 0,
+        totalPayouts: 0,
+        totalGames: 0,
+        updatedAt: Date.now()
+      })
+
+      // 2. Сброс статистики всех пользователей
+      const snap = await getDocs(collection(db, 'users'))
+      const batch = writeBatch(db)
+      
+      snap.docs.forEach(u => {
+        batch.update(u.ref, {
+          totalWon: 0,
+          totalLost: 0,
+          totalGamesPlayed: 0
+        })
+      })
+      
+      await batch.commit()
+      toast.success('Вся статистика успешно сброшена')
+      loadUsers()
+    } catch (e) {
+      console.error(e)
+      toast.error('Ошибка при сбросе статистики')
     }
   }
 
@@ -593,6 +626,23 @@ export function AdminPage() {
                       <Input defaultValue={settings?.bankCreditRate || 80} type="number" className="bg-marble/30 h-8" id="in_cred_rate" />
                       <Button size="sm" className="h-8" onClick={() => updateBankSetting('bankCreditRate', (document.getElementById('in_cred_rate') as HTMLInputElement).value)}>OK</Button>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-12 pt-8 border-t border-neon-red/20 space-y-4">
+                <h3 className="text-lg font-serif font-bold text-neon-red flex items-center gap-2">
+                   ⚠️ Опасная зона
+                </h3>
+                <div className="p-6 rounded-2xl bg-neon-red/5 border border-neon-red/20">
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div>
+                      <h4 className="font-bold text-foreground">Сбросить все игровые данные</h4>
+                      <p className="text-sm text-muted-foreground mt-1">Очистка всех игровых счетчиков, тоталов и личной статистики игроков (Won/Lost/Games). Баланс затронут не будет.</p>
+                    </div>
+                    <Button variant="destructive" className="bg-neon-red hover:bg-red-600 shadow-glow-red font-bold px-8" onClick={resetAllStats}>
+                       СБРОСИТЬ ВСЁ
+                    </Button>
                   </div>
                 </div>
               </div>
