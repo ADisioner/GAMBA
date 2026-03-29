@@ -217,31 +217,63 @@ export function AdminPage() {
         updatedAt: Date.now()
       })
 
-      // 2. Сброс статистики всех пользователей
+      // 2. Сброс статистики всех пользователей (с учетом лимита батча 500)
       const snap = await getDocs(collection(db, 'users'))
-      const batch = writeBatch(db)
+      console.log(`Resetting stats for ${snap.docs.length} users...`)
       
-      snap.docs.forEach(u => {
+      let batch = writeBatch(db)
+      let count = 0
+      
+      for (const u of snap.docs) {
         batch.update(u.ref, {
           totalWon: 0,
           totalLost: 0,
-          totalGamesPlayed: 0
+          totalGamesPlayed: 0,
+          luck: 0.0,
+          bankDebt: 0, 
+          updatedAt: Date.now()
         })
-      })
+        count++
+        
+        if (count >= 490) {
+          await batch.commit()
+          batch = writeBatch(db)
+          count = 0
+        }
+      }
       
-      await batch.commit()
+      if (count > 0) {
+        await batch.commit()
+      }
 
-      // 3. Очистка игровых логов (первые 500 для простоты, т.к. это лимит батча)
-      const gamesSnap = await getDocs(query(collection(db, 'games'), limit(500)))
-      const gamesBatch = writeBatch(db)
-      gamesSnap.docs.forEach(d => gamesBatch.delete(d.ref))
-      await gamesBatch.commit()
+      // 3. Полная очистка игровых логов (цикл по 500 до победного)
+      let gamesRemaining = true
+      while (gamesRemaining) {
+        const gamesSnap = await getDocs(query(collection(db, 'games'), limit(500)))
+        if (gamesSnap.empty) {
+          gamesRemaining = false
+        } else {
+          const gamesBatch = writeBatch(db)
+          gamesSnap.docs.forEach(d => gamesBatch.delete(d.ref))
+          await gamesBatch.commit()
+        }
+      }
 
-      // 4. Очистка банковских транзакций (первые 500)
-      const txSnap = await getDocs(query(collection(db, 'bank_transactions'), limit(500)))
-      const txBatch = writeBatch(db)
-      txSnap.docs.forEach(d => txBatch.delete(d.ref))
-      await txBatch.commit()
+      // 4. Полная очистка банковских транзакций (цикл по 500)
+      let txRemaining = true
+      while (txRemaining) {
+        const txSnap = await getDocs(query(collection(db, 'bank_transactions'), limit(500)))
+        if (txSnap.empty) {
+          txRemaining = false
+        } else {
+          const txBatch = writeBatch(db)
+          txSnap.docs.forEach(d => txBatch.delete(d.ref))
+          await txBatch.commit()
+        }
+      }
+      
+      setGlobalStats(prev => ({ ...prev, totalBets: 0, totalPayouts: 0, totalGames: 0 }))
+      setSessionBankProfit(0)
       
       toast.success('Вся статистика успешно сброшена')
       loadUsers()
