@@ -124,7 +124,7 @@ function ChatPanel() {
   )
 }
 
-function Leaderboard() {
+function LeaderboardList() {
   const [leaders, setLeaders] = useState<LeaderboardEntry[]>([])
   useEffect(() => {
     (async () => { try {
@@ -132,16 +132,72 @@ function Leaderboard() {
       setLeaders(snap.docs.map(d => ({ nickname: d.data().nickname, avatarUrl: d.data().avatarUrl, totalWon: d.data().totalWon || 0, balance: d.data().balance || 0 })))
     } catch {} })()
   }, [])
+  
   return (
-    <Card>
-      <div className="p-4 border-b border-gold/20 flex items-center gap-2"><Trophy className="w-4 h-4 text-gold" /><h3 className="font-serif text-sm font-semibold">Лидерборд</h3></div>
-      <div className="p-3 space-y-2">{leaders.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Пока пусто</p> : leaders.map((l, i) => (
+    <div className="p-3 space-y-2">
+      {leaders.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Пока пусто</p> : leaders.map((l, i) => (
         <div key={l.nickname} className="flex items-center gap-3 py-1.5">
           <span className={`text-xs font-bold w-5 text-center ${i < 3 ? 'text-gold' : 'text-muted-foreground'}`}>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`}</span>
           <img src={l.avatarUrl} alt="" className="w-6 h-6 rounded-full bg-marble" />
           <span className="text-xs font-medium flex-1 truncate">{l.nickname}</span>
           <span className="text-xs text-gold font-semibold">{formatDynamicBalance(l.balance)}</span>
-        </div>))}</div>
+        </div>))}
+    </div>
+  )
+}
+
+function OnlineList() {
+  const [online, setOnline] = useState<{nickname: string; avatarUrl: string}[]>([])
+  
+  useEffect(() => {
+    const unsub = onValue(ref(rtdb, 'status'), (snap) => {
+      if (!snap.exists()) {
+        setOnline([])
+        return
+      }
+      const data = snap.val()
+      const users = Object.values(data) as any[]
+      setOnline(users)
+    })
+    return () => unsub()
+  }, [])
+  
+  return (
+    <div className="p-3 space-y-2">
+      {online.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Никого нет</p> : online.map((u, i) => (
+        <div key={u.nickname} className="flex items-center gap-3 py-1.5 animate-in fade-in zoom-in duration-300" style={{ animationDelay: `${i * 50}ms` }}>
+          <div className="relative">
+            <img src={u.avatarUrl} alt="" className="w-8 h-8 rounded-full bg-marble border border-emerald-500/30" />
+            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-background shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+          </div>
+          <span className="text-sm font-medium flex-1 truncate tracking-tight">{u.nickname}</span>
+        </div>))}
+    </div>
+  )
+}
+
+function SidebarPanels() {
+  const [tab, setTab] = useState<'leaderboard' | 'online'>('leaderboard')
+  
+  return (
+    <Card className="flex flex-col min-h-[300px] overflow-hidden">
+      <div className="flex bg-marble-light/20">
+        <button 
+          onClick={() => setTab('leaderboard')}
+          className={`flex-1 p-3 text-[11px] font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 ${tab === 'leaderboard' ? 'bg-gold/10 text-gold shadow-[inset_0_-2px_0_rgba(255,215,0,1)]' : 'text-muted-foreground hover:bg-gold/5'}`}
+        >
+          <Trophy className="w-3.5 h-3.5" /> Топ 10
+        </button>
+        <button 
+          onClick={() => setTab('online')}
+          className={`flex-1 p-3 text-[11px] font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 ${tab === 'online' ? 'bg-emerald-500/10 text-emerald-400 shadow-[inset_0_-2px_0_rgba(16,185,129,1)]' : 'text-muted-foreground hover:bg-emerald-500/5'}`}
+        >
+          <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" /> Онлайн
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto max-h-[400px]">
+        {tab === 'leaderboard' ? <LeaderboardList /> : <OnlineList />}
+      </div>
     </Card>
   )
 }
@@ -195,7 +251,7 @@ export function LobbyPage() {
               <MultiplayerLobby />
             )}
           </div>
-          <div className="space-y-5"><Leaderboard /><ChatPanel /></div>
+          <div className="space-y-5"><SidebarPanels /><ChatPanel /></div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc, onSnapshot } from 'firebase/firestore'
-import { ref, push } from 'firebase/database'
+import { ref, push, onDisconnect, onValue, set, serverTimestamp } from 'firebase/database'
 import { signInWithPopup, signInAnonymously } from 'firebase/auth'
 import { db, ADMIN_NICKNAME, auth, googleProvider, rtdb } from '@/lib/firebase'
 import { getInitialLuck } from '@/lib/luck'
@@ -163,6 +163,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => unsub()
   }, [currentNick])
+
+  useEffect(() => {
+    if (!profile?.nickname) return
+    
+    // RTDB Presence tracking
+    const userStatusRef = ref(rtdb, `status/${profile.nickname}`)
+    const connectedRef = ref(rtdb, '.info/connected')
+
+    const unsubStatus = onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        onDisconnect(userStatusRef).remove().then(() => {
+          set(userStatusRef, {
+            nickname: profile.nickname,
+            avatarUrl: profile.avatarUrl,
+            lastActive: serverTimestamp()
+          })
+        })
+      }
+    })
+
+    return () => {
+      unsubStatus()
+      // Optional manual clear when component unmounts (e.g. logout)
+      set(userStatusRef, null).catch(() => {})
+    }
+  }, [profile?.nickname, profile?.avatarUrl])
 
   async function refreshProfile() {
     // onSnapshot handles this now, but we keep the method for compatibility
