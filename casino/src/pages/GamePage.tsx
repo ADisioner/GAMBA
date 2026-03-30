@@ -17,6 +17,7 @@ import { BlackjackGame } from '@/games/blackjack/BlackjackGame'
 import { CrashGame } from '@/games/crash/CrashGame'
 import { PokerGame } from '@/games/poker/PokerGame'
 import { RouletteGame } from '@/games/roulette/RouletteGame'
+import { MultiplayerRouletteGame } from '@/games/roulette/MultiplayerRouletteGame'
 
 const GAME_TITLES: Record<GameType, string> = {
   slots: 'Golden Slots',
@@ -268,7 +269,9 @@ export function GamePage() {
           {gameType === 'blackjack' && <BlackjackGame {...gameProps} />}
           {gameType === 'crash' && <CrashGame {...gameProps} />}
           {gameType === 'poker' && <PokerGame {...gameProps} />}
-          {gameType === 'roulette' && <RouletteGame {...gameProps} />}
+          {gameType === 'roulette' && (
+            roomId ? <MultiplayerRouletteGame {...(gameProps as any)} /> : <RouletteGame {...gameProps} />
+          )}
         </div>
       </div>
     </div>
