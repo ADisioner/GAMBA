@@ -114,6 +114,7 @@ export function MultiplayerLobby() {
                 onChange={e => setSelectedGameType(e.target.value as GameType)}
                 className="bg-velvet border border-gold/30 text-[10px] font-bold text-gold rounded px-2 h-8 outline-none"
               >
+
                 <option value="blackjack">BLACKJACK</option>
                 <option value="roulette">ROULETTE</option>
                 <option value="crash">CRASH</option>

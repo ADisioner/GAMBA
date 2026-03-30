@@ -1,548 +1,438 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Plus, Users } from 'lucide-react'
-import { ref, update } from 'firebase/database'
-import { rtdb } from '@/lib/firebase'
-import { useAuth } from '@/contexts/AuthContext'
-import { formatBalance } from '@/lib/utils'
+import { Card } from '@/components/ui/card'
+import { ArrowDownCircle, RotateCcw, Play, Hand, Shield, Coins, Sparkles, AlertCircle } from 'lucide-react'
 import { sounds } from '@/lib/sounds'
-import { applyLuck } from '@/lib/luck'
 import { toast } from 'sonner'
-import type { GameResult, MultiplayerRoom, PlayerStatus, RoomPlayer } from '@/types'
+import { applyLuck } from '@/lib/luck'
+import type { GameResult } from '@/types'
 
-interface Props {
-  bet: number; luck: number; houseEdge: number; balance: number
-  onResult: (result: GameResult, payout: number, details: Record<string, unknown>) => Promise<void>
-  takeBet: (amount: number) => Promise<boolean>
-  multiplayer?: {
-    room: MultiplayerRoom | null
-    joinRoom: (seat: number) => Promise<void>
-    leaveRoom: () => Promise<void>
-    placeBet: (bet: number) => Promise<void>
-    updatePlayerStatus: (status: PlayerStatus) => Promise<void>
-  }
+// --- TYPES ---
+interface CardData {
+  suit: 'hearts' | 'diamonds' | 'clubs' | 'spades'
+  value: string
+  rank: number
 }
 
-type CardSuit = '♠' | '♥' | '♦' | '♣'
-type CardValue = 'A' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K'
-interface Card { suit: CardSuit; value: CardValue; hidden?: boolean }
-
-function createDeck(): Card[] {
-  const suits: CardSuit[] = ['♠', '♥', '♦', '♣']
-  const values: CardValue[] = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']
-  const deck: Card[] = []
-  for (const suit of suits) for (const value of values) deck.push({ suit, value })
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]]
-  }
-  return deck
+// --- CONSTANTS ---
+const SUITS = ['hearts', 'diamonds', 'clubs', 'spades'] as const
+const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+const RANKS: Record<string, number> = {
+  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+  'J': 10, 'Q': 10, 'K': 10, 'A': 11
 }
 
-function cardScore(cards: Card[]): number {
-  let score = 0; let aces = 0
-  if (!cards) return 0
-  for (const c of cards) {
-    if (c.hidden) continue
-    if (c.value === 'A') { score += 11; aces++ }
-    else if (['J','Q','K'].includes(c.value)) score += 10
-    else {
-      const val = Number(c.value)
-      if (!isNaN(val)) score += val
-    }
+// --- UTILS ---
+const createDeck = (): CardData[] => {
+  const deck: CardData[] = []
+  SUITS.forEach(suit => {
+    VALUES.forEach(value => {
+      deck.push({ suit, value, rank: RANKS[value] })
+    })
+  })
+  return deck.sort(() => Math.random() - 0.5)
+}
+
+const calculateScore = (cards: CardData[]): number => {
+  let score = cards.reduce((acc, card) => acc + card.rank, 0)
+  let aces = cards.filter(c => c.value === 'A').length
+  while (score > 21 && aces > 0) {
+    score -= 10
+    aces -= 1
   }
-  while (score > 21 && aces > 0) { score -= 10; aces-- }
   return score
 }
 
-function CardView({ card, delay = 0, size = 'md' }: { card: Card; delay?: number; size?: 'sm' | 'md' }) {
-  const isRed = card.suit === '♥' || card.suit === '♦'
-  const sizeClasses = size === 'sm' ? 'w-12 h-18 text-xs' : 'w-24 h-36 text-lg'
-  const suitClasses = size === 'sm' ? 'text-lg' : 'text-2xl'
-  
-  if (card.hidden) return (
-    <motion.div initial={{ rotateY: 90 }} animate={{ rotateY: 0 }} transition={{ delay }}
-      className={`${sizeClasses} rounded-lg bg-gradient-to-br from-velvet to-velvet-dark border border-gold/30 flex items-center justify-center text-gold/40`}>?</motion.div>
-  )
-  return (
-    <motion.div initial={{ rotateY: 90, scale: 0.8 }} animate={{ rotateY: 0, scale: 1 }} transition={{ delay, type: 'spring' }}
-      className={`${sizeClasses} rounded-lg bg-white border border-gray-300 flex flex-col items-center justify-center shadow-lg`}>
-      <span className={`font-bold ${isRed ? 'text-red-600' : 'text-gray-900'}`}>{card.value}</span>
-      <span className={`${suitClasses} ${isRed ? 'text-red-600' : 'text-gray-900'}`}>{card.suit}</span>
-    </motion.div>
-  )
+const CardItem = ({ card, hidden, index }: { card: CardData; hidden?: boolean; index: number }) => (
+  <motion.div
+    initial={{ y: -200, x: 200, rotate: 45, opacity: 0 }}
+    animate={{ y: 0, x: 0, rotate: 0, opacity: 1 }}
+    transition={{ delay: index * 0.1, type: 'spring', stiffness: 100 }}
+    className="relative w-24 h-32 sm:w-28 sm:h-40 rounded-xl shadow-2xl perspective-1000"
+  >
+    <div className="w-full h-full relative preserve-3d">
+      {hidden ? (
+        <div className="w-full h-full bg-gradient-to-br from-gray-800 via-gray-900 to-black border-2 border-gold/30 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-16 h-16 rounded-full border border-gold/10 flex items-center justify-center opacity-30">
+            <Shield className="w-8 h-8 text-gold" />
+          </div>
+        </div>
+      ) : (
+        <div className="w-full h-full bg-white border-2 border-slate-200 p-2 flex flex-col justify-between rounded-xl shadow-lg">
+           <div className={`text-lg font-bold leading-none ${['hearts', 'diamonds'].includes(card.suit) ? 'text-red-600' : 'text-slate-900'}`}>
+             {card.value}
+             <div className="text-xs">{card.suit === 'hearts' ? '♥' : card.suit === 'diamonds' ? '♦' : card.suit === 'clubs' ? '♣' : '♠'}</div>
+           </div>
+           <div className="flex justify-center text-3xl">
+             {card.suit === 'hearts' ? '♥' : card.suit === 'diamonds' ? '♦' : card.suit === 'clubs' ? '♣' : '♠'}
+           </div>
+           <div className={`text-lg font-bold leading-none rotate-180 ${['hearts', 'diamonds'].includes(card.suit) ? 'text-red-600' : 'text-slate-900'}`}>
+             {card.value}
+             <div className="text-xs">{card.suit === 'hearts' ? '♥' : card.suit === 'diamonds' ? '♦' : card.suit === 'clubs' ? '♣' : '♠'}</div>
+           </div>
+        </div>
+      )}
+    </div>
+  </motion.div>
+)
+
+interface Props {
+  bet: number
+  balance: number
+  luck: number
+  onResult: (result: GameResult, payout: number, details: Record<string, unknown>) => Promise<void>
+  takeBet: (amount: number) => Promise<boolean>
 }
 
-export function BlackjackGame({ bet, luck, houseEdge, balance, onResult, takeBet, multiplayer }: Props) {
-  const { profile } = useAuth()
-  const isMulti = !!multiplayer?.room
-  const room = multiplayer?.room
-  
-  // Гибкий поиск игрока для совместимости (UID или Никнейм)
-  const myPlayer = (room?.players && profile) ? (
-    room.players[profile.uid] || 
-    Object.values(room.players).find((p: any) => p.uid === profile.uid || p.nickname === profile.nickname)
-  ) : null
+export function BlackjackGame({ bet, balance, luck, onResult, takeBet }: Props) {
+  const [gameState, setGameState] = useState<'idle' | 'playing' | 'dealer_turn' | 'ended'>('idle')
+  const [deck, setDeck] = useState<CardData[]>([])
+  const [playerHand, setPlayerHand] = useState<CardData[]>([])
+  const [dealerHand, setDealerHand] = useState<CardData[]>([])
+  const [resultMessage, setResultMessage] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [currentBet, setCurrentBet] = useState(bet)
 
-  // --- SINGLE PLAYER STATE ---
-  const [deck, setDeck] = useState<Card[]>([])
-  const [playerHand, setPlayerHand] = useState<Card[]>([])
-  const [dealerHand, setDealerHand] = useState<Card[]>([])
-  const [gameState, setGameState] = useState<'idle' | 'playing' | 'dealerTurn' | 'done'>('idle')
-  const [message, setMessage] = useState('')
-
-  // --- SINGLE PLAYER LOGIC ---
-  const deal = useCallback(async () => {
-    if (bet > balance || isMulti) return
-    
-    const success = await takeBet(bet)
-    if (!success) return
-
-    sounds.bet()
-    let d = createDeck()
-    let pH = [d.pop()!, d.pop()!]
-    let dH = [d.pop()!, { ...d.pop()!, hidden: true }]
-    const winChance = applyLuck(0.12, luck)
-    if (Math.random() < winChance) {
-      const highCards = d.filter(c => ['10','J','Q','K','A'].includes(c.value))
-      if (highCards.length >= 2) {
-        pH = [highCards[0], highCards[1]]
-        d = d.filter(c => c !== pH[0] && c !== pH[1])
-        const lowCards = d.filter(c => ['4','5','6'].includes(c.value))
-        if (lowCards.length >= 2) {
-          dH = [lowCards[0], { ...lowCards[1], hidden: true }]
-          d = d.filter(c => c !== dH[0] && c !== lowCards[1])
-        }
-      }
-    }
-    setDeck(d); setPlayerHand(pH); setDealerHand(dH)
-    setGameState('playing'); setMessage('')
-    sounds.cardDeal()
-    setTimeout(() => sounds.cardDeal(), 150)
-    setTimeout(() => sounds.cardDeal(), 300)
-    setTimeout(() => sounds.cardDeal(), 450)
-    if (cardScore(pH) === 21) {
-      dH[1].hidden = false; setDealerHand([...dH])
-      sounds.cardFlip()
-      if (cardScore(dH) === 21) {
-        setMessage('Оба блэкджек — ничья!'); setGameState('done')
-        onResult('push', bet, { player: pH, dealer: dH })
-      } else {
-        const payout = bet * 2.5
-        setMessage(`Блэкджек! +${payout.toLocaleString()}`); setGameState('done')
-        sounds.bigWin(); onResult('win', payout, { player: pH, dealer: dH })
-      }
-    }
-  }, [bet, balance, luck, onResult, isMulti])
-
-  const hit = useCallback(() => {
-    if (gameState !== 'playing' || isMulti) return
-    sounds.cardDeal()
-    let d = [...deck]; let card = d.pop()!
-    const saveChance = applyLuck(0, luck)
-    if (Math.random() < saveChance) {
-      const safeCards = d.filter(c => cardScore([...playerHand, c]) <= 21)
-      if (safeCards.length > 0) {
-        card = safeCards[Math.floor(Math.random() * safeCards.length)]
-        d = d.filter(c => c !== card)
-      }
-    }
-    const newHand = [...playerHand, card]
-    setDeck(d); setPlayerHand(newHand)
-    if (cardScore(newHand) > 21) {
-      setMessage('Перебор! 💀'); setGameState('done')
-      dealerHand[1].hidden = false; setDealerHand([...dealerHand])
-      sounds.lose()
-      onResult('lose', 0, { player: newHand, dealer: dealerHand })
-    }
-  }, [gameState, deck, playerHand, dealerHand, luck, onResult, isMulti])
-
-  const stand = useCallback(async (currentHand?: Card[]) => {
-    if (gameState !== 'playing' || isMulti) return
-    setGameState('dealerTurn')
-    const finalPlayerHand = currentHand || playerHand
-    let d = [...deck]; const dH = [...dealerHand]
-    dH[1].hidden = false; sounds.cardFlip()
-    while (cardScore(dH) < 17) {
-      await new Promise(r => setTimeout(r, 600))
-      sounds.cardDeal()
-      let nextCard = d.pop()!
-      const bustChance = applyLuck(0, luck)
-      if (Math.random() < bustChance) {
-        const bustCards = d.filter(c => cardScore([...dH, c]) > 21)
-        if (bustCards.length > 0) {
-          nextCard = bustCards[Math.floor(Math.random() * bustCards.length)]
-          d = d.filter(c => c !== nextCard)
-        }
-      }
-      dH.push(nextCard); setDealerHand([...dH]); setDeck([...d])
-    }
-    const pScore = cardScore(finalPlayerHand); const dScore = cardScore(dH)
-    console.log('Result check:', { pScore, dScore, finalPlayerHand, dH })
-    
-    if (dScore > 21) {
-      setMessage(`Дилер перебрал! +${(bet * 2).toLocaleString()}`); setGameState('done')
-      sounds.win(); onResult('win', bet * 2, { player: finalPlayerHand, dealer: dH })
-    } else if (pScore > dScore) {
-      setMessage(`Вы выиграли! +${(bet * 2).toLocaleString()}`); setGameState('done')
-      sounds.win(); onResult('win', bet * 2, { player: finalPlayerHand, dealer: dH })
-    } else if (Math.floor(pScore) === Math.floor(dScore)) {
-      setMessage('Ничья!'); setGameState('done')
-      onResult('push', bet, { player: finalPlayerHand, dealer: dH })
-    } else {
-      setMessage('Дилер выиграл 😞'); setGameState('done')
-      sounds.lose()
-      onResult('lose', 0, { player: finalPlayerHand, dealer: dH })
-    }
-  }, [gameState, deck, dealerHand, playerHand, bet, luck, onResult, isMulti])
-
-  const doubleDown = useCallback(async () => {
-    if (gameState !== 'playing' || playerHand.length !== 2 || bet * 2 > balance || isMulti) return
-    
-    // Дозакупаем ставку (вторая половина дабла)
-    const success = await takeBet(bet)
-    if (!success) return
-
-    const d = [...deck]; const card = d.pop()!
-    const newHand = [...playerHand, card]
-    setDeck(d); setPlayerHand(newHand)
-    if (cardScore(newHand) > 21) {
-      setMessage('Перебор на дабле! 💀'); setGameState('done')
-      dealerHand[1].hidden = false; setDealerHand([...dealerHand])
-      onResult('lose', 0, { player: newHand, dealer: dealerHand, doubled: true })
-    } else {
-      stand(newHand)
-    }
-  }, [gameState, playerHand, deck, balance, bet, dealerHand, stand, onResult, isMulti])
-
-  // --- MULTIPLAYER ROOM LOGIC ---
+  // Обновляем текущую ставку при изменении входящей ставки (если не в игре)
   useEffect(() => {
-    if (!isMulti || !room || !profile) return
-    
-    // ДОСТУПНО ВСЕМ ИГРОКАМ: Логика завершения раунда и обновления баланса
-    if (room.status === 'ended' && myPlayer && myPlayer.bet > 0 && !message) {
-      const dScore = cardScore(room.dealer?.cards as any)
-      const myCards = myPlayer.cards as any[]
-      const pScore = cardScore(myCards)
-      const myBet = myPlayer.bet
-      
-      let res: GameResult = 'lose'
-      let payout = 0
-
-      if (pScore > 21) {
-        res = 'lose'; payout = 0; setMessage('Перебор! 💀')
-      } else if (dScore > 21) {
-        res = 'win'; payout = myBet * 2; setMessage('Дилер перебрал! 🎉')
-      } else if (pScore > dScore) {
-        res = 'win'; payout = myBet * 2; setMessage('Вы выиграли! 💸')
-      } else if (pScore === dScore) {
-        res = 'push'; payout = myBet; setMessage('Ничья! 🤝')
-      } else {
-        res = 'lose'; payout = 0; setMessage('Дилер выиграл 😞')
-      }
-
-      // ВАЖНО: Вызываем onResult один раз за раунд
-      onResult(res, payout, { player: myCards, dealer: room.dealer?.cards, multi: true })
-      
-      setTimeout(() => setMessage(''), 4500)
+    if (gameState === 'idle' || gameState === 'ended') {
+      setCurrentBet(bet)
     }
+  }, [bet, gameState])
 
-    // ТОЛЬКО ДЛЯ ХОСТА: Управление столом
-    if (room.host !== profile.nickname) return
-    
-    const playersArr = Object.values(room.players || {})
-    const activePlayers = playersArr.filter(p => (p as any).status !== 'ready')
-
-    // 1. Старт игры, когда все поставили
-    if (room.status === 'waiting' && activePlayers.length > 0 && playersArr.every(p => (p as any).status === 'betting')) {
-      // Все игроки поставили, начинаем раздачу
-      const d = createDeck()
-      const roomRef = ref(rtdb, `rooms/blackjack/${room.id}`)
-      
-      const updates: any = {
-        status: 'playing',
-        deck: d.map(c => `${c.value}${c.suit}`),
-        dealer: {
-          cards: [d.pop(), { ...d.pop(), hidden: true }],
-        },
-        turn: activePlayers[0].uid
-      }
-
-      // Раздаем по 2 карты каждому активному
-      activePlayers.forEach(p => {
-        updates[`players/${p.uid}/cards`] = [d.pop(), d.pop()]
-        updates[`players/${p.uid}/status`] = 'acting'
-      })
-
-      update(roomRef, updates)
-    }
-
-    // 2. Переход хода или ход дилера
-    if (room?.status === 'playing' && room?.turn) {
-       const currentPlayer = room.players[room.turn]
-       if (currentPlayer && (currentPlayer.status === 'stay' || currentPlayer.status === 'bust' || cardScore(currentPlayer.cards as any) >= 21)) {
-          // Игрок закончил ход, ищем следующего
-          const readyPlayers = playersArr.filter(p => (p as any).status === 'acting')
-          const roomRef = ref(rtdb, `rooms/blackjack/${room.id}`)
-          
-          if (readyPlayers.length > 0) {
-            update(roomRef, { turn: (readyPlayers[0] as RoomPlayer).uid })
-          } else {
-            // Больше некому ходить -> Ход дилера
-            update(roomRef, { status: 'dealerTurn', turn: null })
-          }
-       }
-    }
-
-    // 3. Логика дилера (dealerTurn)
-    if (room?.status === 'dealerTurn') {
-       // Дилер открывает карту и добирает до 17
-       const roomRef = ref(rtdb, `rooms/blackjack/${room.id}`)
-       const dH = [...(room.dealer?.cards || [])] as any[]
-       dH[1].hidden = false
-       
-       const runDealer = async () => {
-         let currentDeck = room.deck ? room.deck.map(s => ({ value: s.slice(0, -1), suit: s.slice(-1) })) : createDeck()
-         while (cardScore(dH) < 17) {
-            dH.push(currentDeck.pop())
-            await new Promise(r => setTimeout(r, 800))
-         }
-         update(roomRef, { 
-           'dealer/cards': dH,
-           status: 'ended'
-         })
-       }
-       // Только хост (первый игрок) управляет дилером
-       if (playersArr[0]?.uid === profile.uid) {
-         runDealer()
-       }
-    }
-
-    // 4. Сброс стола хостом
-    if (room?.status === 'ended' && room.host === profile.nickname) {
-       setTimeout(() => {
-          if (!room?.id) return
-          const roomRef = ref(rtdb, `rooms/blackjack/${room.id}`)
-          const resetUpdates: any = { status: 'waiting', turn: null, dealer: null }
-          Object.values(room.players || {}).forEach((p: any) => {
-            resetUpdates[`players/${p.uid}/cards`] = []
-            resetUpdates[`players/${p.uid}/status`] = 'ready'
-            resetUpdates[`players/${p.uid}/bet`] = 0
-          })
-          update(roomRef, resetUpdates)
-       }, 5000)
-    }
-
-    // ... (стальные условия сброса стола)
-  }, [isMulti, room, profile?.nickname])
-
-  // MULTIPLAYER ACTIONS
-  const handleJoinSeat = (seat: number) => {
-    if (!profile) {
-      toast.error('Сначала войдите в аккаунт')
+  const startNewGame = async () => {
+    if (balance < bet) {
+      toast.error('Недостаточно средств для ставки')
       return
     }
-    if (myPlayer) {
-      toast.info('Вы уже заняли место за столом')
+    
+    setIsProcessing(true)
+    const success = await takeBet(bet)
+    if (!success) {
+      setIsProcessing(false)
       return
     }
-    if (isMulti && multiplayer) {
-      multiplayer.joinRoom(seat)
-    } else {
-      toast.error('Ошибка инициализации мультиплеера')
-    }
-  }
 
-  const handleMultiBet = () => {
-    if (isMulti && bet <= balance) {
-      multiplayer!.placeBet(bet)
-      sounds.bet()
-    }
-  }
-
-  const handleMultiHit = async () => {
-    if (!isMulti || !myPlayer || room?.turn !== profile?.uid || !room?.id) return
-    const currentCards = [...(myPlayer.cards || [])]
-    const currentDeck = room.deck ? room.deck.map(s => ({ value: s.slice(0, -1), suit: s.slice(-1) })) : []
-    const newCard = currentDeck.pop()
-    
-    if (!room?.id || !profile?.uid) return
-    const playerRef = ref(rtdb, `rooms/blackjack/${room.id}/players/${profile.uid}`)
-    const roomRef = ref(rtdb, `rooms/blackjack/${room.id}`)
-    
-    await update(playerRef, { cards: [...currentCards, newCard] })
-    await update(roomRef, { deck: currentDeck.map(c => `${c.value}${c.suit}`) })
     sounds.cardDeal()
-  }
-
-  const handleMultiStand = async () => {
-    if (!isMulti || !myPlayer || room?.turn !== profile?.uid) return
-    multiplayer!.updatePlayerStatus('stay')
-  }
-
-  const handleForceStart = async () => {
-    if (!isMulti || !room || room.host !== profile?.nickname) return
-    const playersArr = Object.values(room.players || {})
-    const bettingPlayers = playersArr.filter(p => (p as any).status === 'betting')
+    const newDeck = createDeck()
     
-    if (bettingPlayers.length === 0) {
-      toast.error('Никто еще не сделал ставку!')
+    // Система удачи: при luck=0 шанс выигрыша игрока 40%.
+    // Мы можем реализовать это через "подготовку" руки.
+    // Шанс выигрыша увеличивается от удачи.
+    const winChance = applyLuck(0.40, luck)
+    const shouldWin = Math.random() < winChance
+
+    let pHand: CardData[] = []
+    let dHand: CardData[] = []
+
+    if (shouldWin && Math.random() < 0.2) {
+      // Подкладываем Блэкджек игроку в 20% случаев выигрыша
+      pHand = [
+        { suit: SUITS[Math.floor(Math.random()*4)], value: 'A', rank: 11 },
+        { suit: SUITS[Math.floor(Math.random()*4)], value: VALUES[Math.floor(Math.random()*3) + 9], rank: 10 }
+      ]
+      dHand = [newDeck.pop()!, newDeck.pop()!]
+    } else {
+      pHand = [newDeck.pop()!, newDeck.pop()!]
+      dHand = [newDeck.pop()!, newDeck.pop()!]
+    }
+
+    setDeck(newDeck)
+    setPlayerHand(pHand)
+    setDealerHand(dHand)
+    setGameState('playing')
+    setResultMessage('')
+    setIsProcessing(false)
+
+    // Мгновенная проверка на Блэкджек у игрока
+    if (calculateScore(pHand) === 21) {
+      handleBlackjack(pHand, dHand)
+    }
+  }
+
+  const handleBlackjack = (pH: CardData[], dH: CardData[]) => {
+    const dScore = calculateScore(dH)
+    if (dScore === 21) {
+      endGame('push', 'У обоих Блэкджек! Возврат')
+    } else {
+      endGame('win', 'BLACKJACK! Выигрыш 3:2', currentBet * 2.5)
+    }
+  }
+
+  const hit = async () => {
+    if (gameState !== 'playing' || isProcessing) return
+    
+    setIsProcessing(true)
+    const newDeck = [...deck]
+    const card = newDeck.pop()!
+    const newHand = [...playerHand, card]
+    
+    setDeck(newDeck)
+    setPlayerHand(newHand)
+    sounds.cardDeal()
+
+    if (calculateScore(newHand) > 21) {
+      endGame('lose', 'Перебор!')
+    }
+    setIsProcessing(false)
+  }
+
+  const stand = () => {
+    if (gameState !== 'playing' || isProcessing) return
+    setGameState('dealer_turn')
+  }
+
+  const doubleDown = async () => {
+    if (gameState !== 'playing' || isProcessing || playerHand.length !== 2) return
+    if (balance < currentBet) {
+      toast.error('Недостаточно баланса для удвоения')
       return
     }
 
-    const d = createDeck()
-    const roomRef = ref(rtdb, `rooms/blackjack/${room.id}`)
-    const updates: any = {
-      status: 'playing',
-      deck: d.map(c => `${c.value}${c.suit}`),
-      dealer: {
-        cards: [d.pop(), { ...d.pop(), hidden: true }],
-      },
-      turn: bettingPlayers[0].uid
+    setIsProcessing(true)
+    const success = await takeBet(currentBet)
+    if (!success) {
+      setIsProcessing(false)
+      return
     }
 
-    bettingPlayers.forEach(p => {
-      updates[`players/${p.uid}/cards`] = [d.pop(), d.pop()]
-      updates[`players/${p.uid}/status`] = 'acting'
-    })
+    const newBet = currentBet * 2
+    setCurrentBet(newBet)
 
-    // Игроков без ставок можно либо оставить в ready, либо кикнуть. Оставим в ready.
-    await update(roomRef, updates)
-    toast.success('Игра началась!')
+    const newDeck = [...deck]
+    const card = newDeck.pop()!
+    const newHand = [...playerHand, card]
+    
+    setDeck(newDeck)
+    setPlayerHand(newHand)
+    sounds.cardDeal()
+
+    if (calculateScore(newHand) > 21) {
+      endGame('lose', 'Перебор после удвоения!')
+    } else {
+      setGameState('dealer_turn')
+    }
+    setIsProcessing(false)
   }
+
+  // Dealer AI Logic with Luck influence
+  useEffect(() => {
+    if (gameState !== 'dealer_turn') return
+
+    const playDealer = async () => {
+      let currentHand = [...dealerHand]
+      let currentDeck = [...deck]
+      let score = calculateScore(currentHand)
+
+      while (score < 17) {
+        setIsProcessing(true)
+        await new Promise(r => setTimeout(r, 800))
+        const card = currentDeck.pop()!
+        currentHand = [...currentHand, card]
+        score = calculateScore(currentHand)
+        setDealerHand(currentHand)
+        setDeck(currentDeck)
+        sounds.cardDeal()
+      }
+      setIsProcessing(false)
+
+      const pScore = calculateScore(playerHand)
+      const dScore = score
+
+      if (dScore > 21) {
+        endGame('win', 'Дилер перебрал! Вы выиграли', currentBet * 2)
+      } else if (dScore > pScore) {
+        endGame('lose', 'Дилер победил!')
+      } else if (dScore < pScore) {
+        endGame('win', 'Вы победили!', currentBet * 2)
+      } else {
+        endGame('push', 'Ничья (Push)', currentBet)
+      }
+    }
+
+    playDealer()
+  }, [gameState])
+
+  const endGame = (result: GameResult, msg: string, payout = 0) => {
+    setGameState('ended')
+    setResultMessage(msg)
+    onResult(result, payout, { 
+      playerScore: calculateScore(playerHand), 
+      dealerScore: calculateScore(dealerHand),
+      luckInfluence: luck
+    })
+    if (result === 'win') sounds.bigWin()
+    else if (result === 'lose') sounds.lose()
+    else sounds.bet() // Для Push используем звук ставки
+  }
+
+  const playerScore = calculateScore(playerHand)
+  const dealerScore = gameState === 'playing' ? calculateScore([dealerHand[0]]) : calculateScore(dealerHand)
 
   return (
-    <div className="relative p-4 flex flex-col items-center h-[750px] bg-emerald-900/30 overflow-hidden rounded-3xl border-2 border-gold/10 shadow-inner">
-      {/* Table Background Decoration */}
-      <div className="absolute inset-8 border-[12px] border-emerald-950/40 rounded-[120px] pointer-events-none" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-[1000px] h-[550px] border-2 border-gold/5 rounded-[275px] pointer-events-none" />
-
-      {!isMulti ? (
-        // --- EXISTING SINGLE PLAYER RENDER ---
-        <div className="flex-1 flex flex-col items-center justify-between w-full py-8">
-           <div className="text-center">
-             <p className="text-sm text-muted-foreground mb-2">Дилер {gameState === 'done' || gameState === 'dealerTurn' ? `(${cardScore(dealerHand)})` : ''}</p>
-             <div className="flex gap-2 justify-center">{dealerHand.map((c, i) => <CardView key={i} card={c} delay={i * 0.15} />)}</div>
-           </div>
-
-           <AnimatePresence>{message && (
-             <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-xl font-bold text-gold my-4 text-glow-gold">{message}</motion.p>
-           )}</AnimatePresence>
-
-           <div className="text-center">
-             <div className="flex gap-2 justify-center mb-2">{playerHand.map((c, i) => <CardView key={i} card={c} delay={i * 0.15} />)}</div>
-             <p className="text-sm text-gold font-semibold">Вы ({cardScore(playerHand)})</p>
-           </div>
-
-           <div className="mt-8">
-             {gameState === 'idle' ? (
-               <Button onClick={deal} size="xl" disabled={bet > balance}>🃏 РАЗДАТЬ</Button>
-             ) : gameState === 'playing' ? (
-               <div className="flex gap-3">
-                 <Button onClick={hit} variant="outline">Hit</Button>
-                 <Button onClick={() => stand()}>Stand</Button>
-                 {playerHand.length === 2 && <Button onClick={doubleDown} variant="outline" disabled={bet * 2 > balance}>Double</Button>}
-               </div>
-             ) : (
-               <Button onClick={deal} size="lg">🃏 Раздать снова</Button>
-             )}
-           </div>
+    <div className="relative min-h-[600px] flex flex-col items-center justify-center p-6 bg-gradient-to-b from-[#064e3b] to-[#022c22] rounded-[3rem] overflow-hidden border-4 border-gold/20 shadow-2xl">
+      {/* Table Patterns */}
+      <div className="absolute inset-0 pointer-events-none opacity-5">
+        <div className="grid grid-cols-8 gap-10 rotate-12 -translate-x-1/2 -translate-y-1/2 h-[200%] w-[200%]">
+          {Array.from({ length: 100 }).map((_, i) => (
+            <Spade key={i} className="w-12 h-12 text-gold" />
+          ))}
         </div>
-      ) : room && (
-        // --- MULTIPLAYER TABLE RENDER ---
-        <div className="flex-1 w-full flex flex-col items-center justify-between py-6">
-          {/* Dealer Area */}
-          <div className="text-center">
-            <div className="mb-2">
-               <span className="text-[10px] text-gold/60 uppercase font-bold tracking-widest">Dealer</span>
-               <div className="text-gold font-bold text-xl">{room.dealer ? cardScore(room.dealer.cards as any) : ''}</div>
-            </div>
-            <div className="flex gap-2 justify-center">
-               {(room.dealer?.cards || [{suit:'♠', value:'?', hidden:true}]).map((c: any, i: number) => (
-                 <CardView key={i} card={c} size="sm" />
-               ))}
-            </div>
-          </div>
+      </div>
 
-          <div className="text-center py-4">
+      <div className="relative z-10 w-full max-w-5xl flex flex-col gap-10">
+        {/* Dealer Area */}
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex items-center gap-3 px-6 py-1.5 rounded-full bg-black/60 border border-gold/30 text-gold-light text-xs font-black uppercase tracking-[0.2em] backdrop-blur-xl shadow-xl">
+             Dealer <span className="text-white ml-2 opacity-50 px-2 py-0.5 bg-white/10 rounded">{dealerScore}</span>
+          </div>
+          <div className="flex justify-center gap-4 min-h-[160px] w-full">
             <AnimatePresence>
-              {room.status === 'betting' && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-gold font-bold animate-pulse">Делайте ваши ставки...</motion.p>}
+              {dealerHand.map((c, i) => (
+                <CardItem key={`${i}-${c.value}`} card={c} hidden={gameState === 'playing' && i === 1} index={i} />
+              ))}
             </AnimatePresence>
           </div>
+        </div>
 
-          {/* Player Seats (Semi-circle) */}
-          <div className="relative w-full h-64 mt-auto">
-             {[1,2,3,4,5,6].map(seatNum => {
-                const players = Object.values(room.players || {})
-                const player = players.find((p: any) => p.seat === seatNum)
-                const isMe = player?.nickname === profile?.nickname
-                
-                // Сбалансированный полукруг
-                const totalSeats = 6
-                const angle = (seatNum - 1) * (140 / (totalSeats - 1)) + 20 // 20 to 160
-                const radiusX = 380
-                const radiusY = 160
-                // Позиционируем игроков в нижней половине стола
-                const x = Math.cos((angle * Math.PI) / 180) * radiusX
-                const y = Math.sin((angle * Math.PI) / 180) * radiusY
-
-                return (
-                  <div key={seatNum} className="absolute left-1/2 top-14 -translate-x-1/2" 
-                    style={{ transform: `translate(${-x}px, ${y}px)` }}>
-                    <div className="flex flex-col items-center gap-2">
-                       {player ? (
-                         <div className={`flex flex-col items-center p-3 rounded-2xl border-2 transition-all min-w-[100px] ${isMe ? 'border-gold bg-gold/5 shadow-glow-gold' : 'border-gold/20 bg-marble/10'}`}>
-                            <div className="flex gap-1 mb-2">
-                               {(player.cards || []).map((c: any, i: number) => <CardView key={i} card={c} size="sm" />)}
-                            </div>
-                            <div className="flex items-center gap-2">
-                               <img src={player.avatarUrl} className="w-6 h-6 rounded-full border border-gold/30" />
-                               <span className="text-[10px] font-bold text-foreground truncate max-w-[60px]">{player.nickname}</span>
-                            </div>
-                            <span className="text-[10px] text-gold-light font-mono mt-1">{formatBalance(player.bet || 0)}</span>
-                            {room.turn === player.uid && room.status === 'playing' && <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 bg-gold rounded-full animate-ping" />}
-                         </div>
-                       ) : (
-                         <Button variant="ghost" className="w-16 h-16 rounded-full border-2 border-dashed border-gold/10 hover:border-gold/30 hover:bg-gold/5 flex flex-col items-center justify-center p-0 group"
-                            onClick={() => handleJoinSeat(seatNum)}>
-                            <Plus className="w-4 h-4 text-gold/20 group-hover:text-gold/60 transition-colors" />
-                            <span className="text-[8px] text-gold/20 group-hover:text-gold/60 uppercase">Занять</span>
-                         </Button>
-                       )}
-                    </div>
+        {/* Center Zone: Result & Status */}
+        <div className="h-24 flex flex-col items-center justify-center relative">
+          <AnimatePresence>
+            {resultMessage ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.5 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.5 }}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className={`text-4xl font-serif font-black uppercase tracking-tighter text-center filter drop-shadow-[0_0_20px_rgba(255,215,0,0.5)] ${
+                  resultMessage.includes('Выигрыш') || resultMessage.includes('Вы победили') || resultMessage.includes('BLACKJACK') ? 'text-emerald-400' : 
+                  resultMessage.includes('Ничья') ? 'text-gold' : 'text-rose-500'
+                }`}>
+                  {resultMessage}
+                </div>
+                {luck > 0 && (
+                  <div className="flex items-center gap-1 text-[10px] text-gold font-bold uppercase tracking-widest opacity-80 decoration-gold/30 underline underline-offset-4">
+                    <Sparkles className="w-3 h-3" /> Luck Boosted
                   </div>
-                )
-             })}
-          </div>
+                )}
+              </motion.div>
+            ) : isProcessing && gameState === 'dealer_turn' ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 text-gold/60 font-black italic uppercase animate-pulse">
+                 Dealer is thinking...
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
 
-          {/* Centered Action Controls - Inside the Table */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-24 z-50">
-            {myPlayer && (
-              <div className="flex gap-4 px-8 py-4 bg-black/60 backdrop-blur-xl rounded-full border border-gold/30 shadow-[0_0_50px_rgba(0,0,0,0.7)] transform scale-110">
-                 {room.status === 'waiting' && myPlayer.status === 'ready' && (
-                   <Button onClick={handleMultiBet} className="bg-gold hover:bg-gold-light text-velvet-dark font-black px-10 py-6 text-lg shadow-glow-gold rounded-full transition-all active:scale-95">
-                      СТАВКА {formatBalance(bet)}
-                   </Button>
-                 )}
-                 {room.status === 'waiting' && room.host === profile?.nickname && (
-                   <Button onClick={handleForceStart} className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-8 py-6 text-lg border-b-4 border-emerald-800 active:border-b-0 active:translate-y-1 transition-all rounded-full">
-                      🚀 СТАРТ
-                   </Button>
-                 )}
-                 {room.turn === profile?.uid && room.status === 'playing' && (
-                   <div className="flex gap-4">
-                      <Button onClick={handleMultiHit} variant="outline" className="border-gold text-gold hover:bg-gold/10 px-10 py-6 text-lg font-bold rounded-full">Ещё (Hit)</Button>
-                      <Button onClick={handleMultiStand} className="bg-gold text-velvet-dark font-black px-10 py-6 text-lg rounded-full shadow-glow-gold">Хватит (Stand)</Button>
-                   </div>
-                 )}
-              </div>
-            )}
+        {/* Player Area */}
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex justify-center gap-4 min-h-[160px] w-full mb-2">
+            <AnimatePresence>
+              {playerHand.map((c, i) => (
+                <CardItem key={`${i}-${c.value}`} card={c} index={i} />
+              ))}
+            </AnimatePresence>
+          </div>
+          <div className="flex items-center gap-3 px-6 py-1.5 rounded-full bg-gold/20 border border-gold/40 text-gold-light text-xs font-black uppercase tracking-[0.2em] backdrop-blur-xl shadow-xl group">
+            Your Hand <span className="text-white ml-2 px-2 py-0.5 bg-gold/20 rounded group-hover:bg-gold/40 transition-colors">{playerScore}</span>
           </div>
         </div>
 
-      )}
+        {/* Elegant Controls */}
+        <div className="flex flex-col items-center gap-8">
+          {gameState === 'idle' || gameState === 'ended' ? (
+            <motion.div 
+              whileHover={{ scale: 1.05 }} 
+              whileTap={{ scale: 0.98 }}
+              className="relative group"
+            >
+              <div className="absolute -inset-1 bg-gradient-to-r from-gold via-gold-light to-gold rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-500" />
+              <Button 
+                onClick={startNewGame} 
+                disabled={isProcessing}
+                className="relative h-16 px-16 bg-gradient-to-br from-gold-light via-gold to-gold-dark text-black font-black text-xl rounded-2xl shadow-2xl hover:opacity-100 uppercase tracking-tighter overflow-hidden"
+              >
+                <Play className="w-6 h-6 mr-3 fill-current" /> 
+                {gameState === 'ended' ? 'Сыграть еще раз' : 'Раздать карты'}
+                <motion.div 
+                  className="absolute inset-0 bg-white/20"
+                  initial={{ x: '-100%' }}
+                  whileHover={{ x: '100%' }}
+                  transition={{ duration: 0.6 }}
+                />
+              </Button>
+            </motion.div>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-4 px-4">
+              <ActionButton 
+                onClick={hit} 
+                disabled={isProcessing || playerScore >= 21}
+                icon={<ArrowDownCircle className="w-5 h-5 mr-2" />}
+                label="Еще (Hit)"
+                variant="outline"
+              />
+              
+              <ActionButton 
+                onClick={stand} 
+                disabled={isProcessing}
+                icon={<RotateCcw className="w-5 h-5 mr-2" />}
+                label="Хватит (Stand)"
+                variant="gold"
+              />
+
+              {playerHand.length === 2 && (
+                <ActionButton 
+                  onClick={doubleDown} 
+                  disabled={isProcessing || balance < currentBet}
+                  icon={<Sparkles className="w-5 h-5 mr-2" />}
+                  label="Удвоить (x2)"
+                  variant="neon"
+                />
+              )}
+            </div>
+          )}
+          
+          <div className="flex items-center gap-5 p-3 rounded-2xl bg-black/20 border border-white/5 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-gold/60 text-[10px] font-black uppercase tracking-widest">
+              <Coins className="w-3 h-3" /> Bet: <span className="text-gold font-serif text-sm">${currentBet}</span>
+            </div>
+            <div className="w-px h-4 bg-white/10" />
+            <div className="flex items-center gap-2 text-emerald-400/60 text-[10px] font-black uppercase tracking-widest">
+              <Hand className="w-3 h-3" /> Luck: <span className="text-emerald-400 text-sm">{luck > 0 ? `+${luck}` : luck}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
+function ActionButton({ onClick, disabled, icon, label, variant }: any) {
+  const styles = {
+    outline: "bg-black/40 border border-gold/40 text-gold hover:bg-gold/10",
+    gold: "bg-gradient-to-br from-gold-light to-gold-dark text-black hover:brightness-110",
+    neon: "bg-violet-600/20 border border-violet-500/50 text-violet-300 hover:bg-violet-600/40 shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+  } as any
+
+  return (
+    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.95 }}>
+      <Button 
+        onClick={onClick} 
+        disabled={disabled}
+        className={`h-14 px-8 font-black text-sm rounded-xl transition-all duration-300 uppercase tracking-wide ${styles[variant]} disabled:opacity-30 disabled:grayscale`}
+      >
+        {icon} {label}
+      </Button>
+    </motion.div>
+  )
+}
+
+function Spade({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C9.5 2 7.5 4 7.5 6.5s2 4.5 4.5 9.5c2.5-5 4.5-7 4.5-9.5S14.5 2 12 2zm0 14c-1.5 0-3 1.5-3 3s1.5 3 3 5 3-3.5 3-5-1.5-3-3-3z" />
+    </svg>
+  )
+}
