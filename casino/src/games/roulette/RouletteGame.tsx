@@ -165,19 +165,17 @@ function RouletteWheel({ spinning, winNumber, onSpinEnd }: {
           return (
             <div
               key={i}
-              className="absolute left-1/2 top-0 origin-[50%_calc(var(--wheel-r))]"
+              className="absolute left-[calc(50%-12px)] top-0 origin-[50%_100%]"
               style={{
-                '--wheel-r': '160px',
-                transform: `rotate(${angle}deg) translateX(-50%)`,
+                transform: `rotate(${angle}deg)`,
                 width: '24px',
                 height: '50%',
                 display: 'flex',
                 justifyContent: 'center',
                 paddingTop: '8px',
-              } as React.CSSProperties}
+              }}
             >
-              <span className="text-[9px] sm:text-[10px] font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] select-none"
-                style={{ transform: `rotate(0deg)` }}>
+              <span className="text-[9px] sm:text-[10px] font-bold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] select-none">
                 {displayNumber(n)}
               </span>
             </div>
@@ -468,10 +466,10 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
   }, [winNumber, bets, totalBet, onResult])
 
   return (
-    <div className="py-4 px-2 sm:px-4 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-8 lg:gap-14 w-full max-w-[1400px] mx-auto">
+    <div className="py-4 px-2 sm:px-4 flex flex-col lg:flex-row items-center lg:items-start justify-center lg:justify-between gap-8 lg:gap-24 xl:gap-32 w-full max-w-[1400px] mx-auto">
       
       {/* Левая колонка: Колесо */}
-      <div className="w-full lg:w-auto flex flex-col items-center justify-start xl:sticky xl:top-24 order-1 lg:order-1 shrink-0 z-10">
+      <div className="w-full lg:w-auto flex flex-col items-center justify-start xl:sticky xl:top-24 order-1 lg:order-1 shrink-0 z-10 lg:pl-12 xl:pl-20">
         <div className="mb-8 lg:mb-0 scale-110 sm:scale-125 lg:scale-150 xl:scale-[1.65] origin-top transition-transform duration-500">
           <RouletteWheel
             spinning={spinning}
@@ -482,7 +480,7 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
       </div>
 
       {/* Правая колонка: Ставки, история и контролы */}
-      <div className="flex-1 w-full max-w-3xl flex flex-col order-2 lg:order-2">
+      <div className="flex-1 w-full max-w-3xl flex flex-col order-2 lg:order-2 lg:ml-auto">
         
         {/* Результат */}
         <div className="h-20 flex items-center justify-center mb-4">
