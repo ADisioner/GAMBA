@@ -31,7 +31,7 @@ export interface BankTransaction {
   createdAt: number
 }
 
-export type GameType = 'slots' | 'blackjack' | 'crash' | 'poker'
+export type GameType = 'slots' | 'blackjack' | 'crash' | 'poker' | 'roulette'
 
 export type GameResult = 'win' | 'lose' | 'push'
 

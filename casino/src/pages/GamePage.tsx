@@ -16,12 +16,14 @@ import { SlotsGame } from '@/games/slots/SlotsGame'
 import { BlackjackGame } from '@/games/blackjack/BlackjackGame'
 import { CrashGame } from '@/games/crash/CrashGame'
 import { PokerGame } from '@/games/poker/PokerGame'
+import { RouletteGame } from '@/games/roulette/RouletteGame'
 
 const GAME_TITLES: Record<GameType, string> = {
   slots: 'Golden Slots',
   blackjack: 'Блэкджек',
   crash: 'Crash',
   poker: 'Poker',
+  roulette: 'Рулетка',
 }
 
 export function GamePage() {
@@ -35,7 +37,7 @@ export function GamePage() {
   const gameType = type as GameType
   const { room, loading: roomLoading, averageLuck, joinRoom, leaveRoom, placeBet, updatePlayerStatus } = useMultiplayerRoom(gameType, roomId)
 
-  if (!profile || !['slots', 'blackjack', 'crash', 'poker'].includes(gameType)) {
+  if (!profile || !['slots', 'blackjack', 'crash', 'poker', 'roulette'].includes(gameType)) {
     return <div className="min-h-screen flex items-center justify-center"><p>Игра не найдена</p></div>
   }
 
@@ -193,7 +195,7 @@ export function GamePage() {
     navigate('/lobby')
   }
 
-  const isRoulette = false
+  const isRoulette = gameType === 'roulette'
   const isEpicSlots = false
 
   return (
@@ -266,6 +268,7 @@ export function GamePage() {
           {gameType === 'blackjack' && <BlackjackGame {...gameProps} />}
           {gameType === 'crash' && <CrashGame {...gameProps} />}
           {gameType === 'poker' && <PokerGame {...gameProps} />}
+          {gameType === 'roulette' && <RouletteGame {...gameProps} />}
         </div>
       </div>
     </div>

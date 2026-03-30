@@ -17,8 +17,9 @@ import { db, rtdb } from '@/lib/firebase'
 
 const GAME_CARDS: { type: GameType; icon: React.ReactNode; gradient: string; badge?: string }[] = [
   { type: 'slots', icon: <Crown className="w-8 h-8" />, gradient: 'from-gold-dark via-gold to-gold-light', badge: 'HOT' },
+  { type: 'roulette', icon: <CircleDot className="w-8 h-8" />, gradient: 'from-red-800 via-red-600 to-red-400', badge: 'NEW' },
   { type: 'blackjack', icon: <Spade className="w-8 h-8" />, gradient: 'from-gray-700 via-gray-600 to-gray-500' },
-  { type: 'crash', icon: <TrendingUp className="w-8 h-8" />, gradient: 'from-emerald-700 via-emerald-500 to-emerald-400', badge: 'NEW' },
+  { type: 'crash', icon: <TrendingUp className="w-8 h-8" />, gradient: 'from-emerald-700 via-emerald-500 to-emerald-400' },
   { type: 'poker', icon: <Club className="w-8 h-8" />, gradient: 'from-violet-900 via-purple-600 to-fuchsia-400' },
 ]
 
