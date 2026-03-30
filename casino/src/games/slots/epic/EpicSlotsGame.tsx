@@ -19,7 +19,7 @@ interface Props {
 export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) {
   const [spinning, setSpinning] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false) // Блокировка кнопки до начала анимации
-  const [spinId, setSpinId] = useState(0) // Уникальный ID для сброса framer-motion
+
   const [isAuto, setIsAuto] = useState(false)
   
   const [finalReels, setFinalReels] = useState<SymbolType[][]>([
@@ -87,18 +87,14 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
     setBigWin(false)
     setStoppedReels(0)
     setWinLines([])
-    setSpinId(prev => prev + 1) // Меняем ID чтобы framer-motion пересоздал компонент
+
+    const currentLuck = isAuto ? luck * 0.7 : luck
+    const reels = generateReels(currentLuck)
     
-    // Даем React миллисекунду на сброс ключей, затем крутим
-    setTimeout(() => {
-      const currentLuck = isAuto ? luck * 0.7 : luck
-      const reels = generateReels(currentLuck)
-      
-      setFinalReels(reels)
-      finalReelsRef.current = reels
-      setSpinning(true)
-      setIsProcessing(false)
-    }, 10)
+    setFinalReels(reels)
+    finalReelsRef.current = reels
+    setSpinning(true)
+    setIsProcessing(false)
   }, [bet, balance, spinning, isProcessing, luck, isAuto, takeBet])
 
   useEffect(() => {
@@ -204,7 +200,7 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
           <div className="flex gap-4 sm:gap-6 relative z-10">
             {[0, 1, 2, 3, 4].map(i => (
               <EpicReel
-                key={`${spinId}-${i}`} // Критично для Framer Motion, чтобы сбросить стейт анимации
+                key={i}
                 index={i}
                 spinning={spinning}
                 finalSymbols={finalReels[i]}
