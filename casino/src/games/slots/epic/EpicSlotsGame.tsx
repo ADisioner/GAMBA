@@ -188,10 +188,9 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
       {/* MAIN SLOT MACHINE FRAME */}
       <motion.div 
         className="relative mb-12 mt-16"
-        initial={{ rotateX: 20, y: 100, opacity: 0 }}
-        animate={{ rotateX: 5, y: 0, opacity: 1 }}
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1.2, type: 'spring' }}
-        style={{ perspective: '2000px' }}
       >
         {/* HEADER GLOW */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gradient-to-b from-amber-300 to-yellow-600 rounded-2xl px-16 py-4 shadow-[0_15px_40px_rgba(251,191,36,0.6)] z-30 border-b-4 border-yellow-800/40 whitespace-nowrap min-w-max">
@@ -204,7 +203,7 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
           <div className="flex gap-4 sm:gap-6 relative z-10">
             {[0, 1, 2, 3, 4].map(i => (
               <EpicReel
-                key={i}
+                key={`${i}-${stoppedReels === 0 && spinning ? 'spinning' : 'idle'}`}
                 index={i}
                 spinning={spinning}
                 finalSymbols={finalReels[i]}
