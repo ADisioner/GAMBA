@@ -10,7 +10,7 @@ import { formatBalance } from '@/lib/utils'
 import type { UserProfile, GameRecord, GameType } from '@/types'
 import { collection, getDocs, doc, updateDoc, query, orderBy, limit, deleteDoc, getDoc, setDoc, where, writeBatch } from 'firebase/firestore'
 import { ref, push, onValue, remove } from 'firebase/database'
-import { db, rtdb } from '@/lib/firebase'
+import { db, rtdb, auth } from '@/lib/firebase'
 import { toast } from 'sonner'
 
 type Tab = 'users' | 'history' | 'settings' | 'broadcast' | 'rooms'
@@ -344,9 +344,16 @@ export function AdminPage() {
     setIsDeploying(true)
     const t = toast.loading('Начало обновления...')
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/deploy`, {
+      // Получаем свежий токен Firebase для авторизации на бэкенде
+      const idToken = await auth.currentUser?.getIdToken(true)
+      if (!idToken) throw new Error('Не удалось получить токен авторизации')
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/deploy`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${profile?.nickname}` }
+        headers: { 
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json'
+        }
       })
       const data = await res.json()
       if (data.success) {
@@ -354,8 +361,8 @@ export function AdminPage() {
       } else {
         toast.error(`Ошибка обновления: ${data.details || data.error}`, { id: t })
       }
-    } catch (e) {
-      toast.error('Не удалось соединиться с сервером обновлений', { id: t })
+    } catch (e: any) {
+      toast.error(e.message || 'Не удалось соединиться с сервером обновлений', { id: t })
     } finally {
       setIsDeploying(false)
     }
