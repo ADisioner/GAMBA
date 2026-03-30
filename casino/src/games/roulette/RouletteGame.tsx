@@ -94,10 +94,17 @@ function RouletteWheel({ spinning, winNumber, onSpinEnd }: {
 
     // Вычисляем целевой угол — индекс числа на колесе
     const idx = WHEEL_NUMBERS.indexOf(winNumber)
-    // Минимум 5 полных оборотов + точный угол к ячейке (с центровкой)
-    const targetAngle = 360 * 7 + (360 - idx * segAngle - segAngle / 2)
+    const targetMod = 360 - (idx * segAngle + segAngle / 2)
 
-    setRotation(prev => prev + targetAngle)
+    setRotation(prev => {
+      const prevMod = prev % 360
+      const diff = targetMod >= prevMod 
+        ? targetMod - prevMod 
+        : 360 - (prevMod - targetMod)
+      
+      // Минимум 5 оборотов + нужная разница, чтобы остановить в targetMod
+      return prev + (360 * 5) + diff
+    })
 
     // Звуки тиков во время вращения
     const tickInterval = setInterval(() => {
