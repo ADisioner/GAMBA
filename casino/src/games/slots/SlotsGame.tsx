@@ -163,11 +163,8 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
       if (next === 3) {
         const middle = finalSymbolsRef.current
         const allSame = middle[0] === middle[1] && middle[1] === middle[2]
-        const twoSame = middle[0] === middle[1] || middle[1] === middle[2] || middle[0] === middle[2]
-
         let payout = 0
         if (allSame) payout = bet * (PAYOUTS[middle[0]] || 2)
-        else if (twoSame) payout = Math.floor(bet * 1.5)
 
         const result: GameResult = payout > 0 ? 'win' : 'lose'
         
@@ -181,7 +178,7 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
           } else {
             sounds.lose()
           }
-          onResult(result, payout, { reels: middle, allSame, twoSame })
+          onResult(result, payout, { reels: middle, allSame })
           setSpinning(false)
         }, 300)
       }
@@ -322,10 +319,7 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
               <span className="text-[10px] font-bold text-yellow-500/70 mt-1">x{mult}</span>
             </div>
           ))}
-          <div className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-yellow-500/30 transition-all cursor-default group hidden sm:flex">
-            <span className="text-xl sm:text-2xl opacity-70">❓</span>
-            <span className="text-[10px] font-bold text-yellow-500/70 mt-1">x1.5</span>
-          </div>
+
         </div>
 
       </div>
