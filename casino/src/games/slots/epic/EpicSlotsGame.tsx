@@ -111,6 +111,10 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
       const next = prev + 1
       if (next === 5) {
         const currentReels = finalReelsRef.current
+        if (!currentReels || currentReels.length === 0) {
+          setSpinning(false)
+          return next
+        }
         const betPerLine = bet / 20 
         
         const { totalWin, winLines, scatters } = evaluateSpin(currentReels, betPerLine)
@@ -173,7 +177,7 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
               >
                 BIG WIN
               </motion.span>
-              <span className="text-7xl sm:text-9xl text-white drop-shadow-[0_10px_20px_rgba(0,0,0,1)] mt-8">
+              <span className="text-7xl sm:text-9xl text-white drop-shadow-[0_10px_20px_rgba(0,0,0,1)] mt-8 [text-shadow:_2px_2px_0_#000,-2px_-2px_0_#000,2px_-2px_0_#000,-2px_2px_0_#000]">
                 +${lastWin?.toLocaleString()}
               </span>
             </div>
