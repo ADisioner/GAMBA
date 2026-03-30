@@ -13,20 +13,14 @@ import { sounds } from '@/lib/sounds'
 import { useMultiplayerRoom } from '@/hooks/useMultiplayerRoom'
 import type { GameType, GameResult } from '@/types'
 import { SlotsGame } from '@/games/slots/SlotsGame'
-import { EpicSlotsGame } from '@/games/slots/epic/EpicSlotsGame'
-import { RouletteGame } from '@/games/roulette/RouletteGame'
 import { BlackjackGame } from '@/games/blackjack/BlackjackGame'
 import { CrashGame } from '@/games/crash/CrashGame'
-import { MinesGame } from '@/games/mines/MinesGame'
 import { PokerGame } from '@/games/poker/PokerGame'
 
 const GAME_TITLES: Record<GameType, string> = {
   slots: 'Golden Slots',
-  'epic-slots': 'Эпичные Слоты',
-  roulette: 'Рулетка',
   blackjack: 'Блэкджек',
   crash: 'Crash',
-  mines: 'Mines',
   poker: 'Poker',
 }
 
@@ -41,7 +35,7 @@ export function GamePage() {
   const gameType = type as GameType
   const { room, loading: roomLoading, averageLuck, joinRoom, leaveRoom, placeBet, updatePlayerStatus } = useMultiplayerRoom(gameType, roomId)
 
-  if (!profile || !['slots', 'epic-slots', 'roulette', 'blackjack', 'crash', 'mines', 'poker'].includes(gameType)) {
+  if (!profile || !['slots', 'blackjack', 'crash', 'poker'].includes(gameType)) {
     return <div className="min-h-screen flex items-center justify-center"><p>Игра не найдена</p></div>
   }
 
@@ -199,8 +193,8 @@ export function GamePage() {
     navigate('/lobby')
   }
 
-  const isRoulette = gameType === 'roulette'
-  const isEpicSlots = gameType === 'epic-slots'
+  const isRoulette = false
+  const isEpicSlots = false
 
   return (
     <div className="min-h-screen">
@@ -269,11 +263,8 @@ export function GamePage() {
 
         <div className={`rounded-3xl ${(isRoulette || isEpicSlots) ? 'bg-transparent border-none overflow-visible' : 'border border-gold/20 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl shadow-black/50'}`}>
           {gameType === 'slots' && <SlotsGame {...gameProps} />}
-          {gameType === 'epic-slots' && <EpicSlotsGame {...gameProps} />}
-          {gameType === 'roulette' && <RouletteGame {...gameProps} />}
           {gameType === 'blackjack' && <BlackjackGame {...gameProps} />}
           {gameType === 'crash' && <CrashGame {...gameProps} />}
-          {gameType === 'mines' && <MinesGame {...gameProps} />}
           {gameType === 'poker' && <PokerGame {...gameProps} />}
         </div>
       </div>
