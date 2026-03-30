@@ -220,7 +220,7 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
   }
 
   // Ячейка стола для числа
-  function NumberCell({ num }: { num: number }) {
+  function NumberCell({ num, className }: { num: number; className?: string }) {
     const color = getColor(num)
     const amount = getBetAmount({ kind: 'straight', number: num })
     const isWin = showResult && winNumber === num
@@ -229,7 +229,7 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
       <button
         onClick={() => onPlaceBet({ kind: 'straight', number: num })}
         disabled={disabled}
-        className={`relative h-12 sm:h-14 flex items-center justify-center font-bold text-sm sm:text-base rounded-lg border transition-all duration-200 ${
+        className={`relative flex items-center justify-center font-bold text-xs sm:text-sm rounded-md border transition-all duration-200 ${
           color === 'red'
             ? 'bg-red-700/80 border-red-500/40 hover:bg-red-600 hover:border-red-400'
             : color === 'black'
@@ -237,11 +237,11 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
               : 'bg-emerald-700/80 border-emerald-500/40 hover:bg-emerald-600'
         } ${isWin ? 'ring-2 ring-gold shadow-[0_0_20px_rgba(212,175,55,0.6)] scale-110 z-10' : ''}
           ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
-          text-white`}
+          text-white ${className || 'h-8 sm:h-10'}`}
       >
         {displayNumber(num)}
         {amount > 0 && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gold text-[8px] font-black text-velvet-dark flex items-center justify-center shadow-lg z-20">
+          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold text-[7px] font-black text-velvet-dark flex items-center justify-center shadow-lg z-20">
             {amount >= 1000 ? `${(amount/1000).toFixed(0)}K` : amount}
           </div>
         )}
@@ -250,7 +250,7 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
   }
 
   // Внешняя ставка (красное/черное и т.д.)
-  function OutsideBet({ label, type, className = '' }: { label: string; type: BetType; className?: string }) {
+  function OutsideBet({ label, type, className }: { label: string; type: BetType; className?: string }) {
     const amount = getBetAmount(type)
     const isWin = showResult && winNumber !== null && checkBet(type, winNumber) > 0
 
@@ -258,14 +258,14 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
       <button
         onClick={() => onPlaceBet(type)}
         disabled={disabled}
-        className={`relative h-10 sm:h-12 flex items-center justify-center text-xs sm:text-sm font-bold rounded-lg border transition-all duration-200 
+        className={`relative flex items-center justify-center text-[10px] sm:text-xs font-bold rounded-md border transition-all duration-200 
           ${isWin ? 'ring-2 ring-gold shadow-[0_0_15px_rgba(212,175,55,0.5)]' : ''}
           ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer active:scale-95 hover:bg-white/10'}
-          bg-white/5 border-white/10 text-white/90 ${className}`}
+          bg-white/5 border-white/10 text-white/90 ${className || 'h-8 sm:h-10'}`}
       >
         {label}
         {amount > 0 && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gold text-[8px] font-black text-velvet-dark flex items-center justify-center shadow-lg z-20">
+          <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold text-[7px] font-black text-velvet-dark flex items-center justify-center shadow-lg z-20">
             {amount >= 1000 ? `${(amount/1000).toFixed(0)}K` : amount}
           </div>
         )}
@@ -273,14 +273,13 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
     )
   }
 
-  // Строим сетку 3 колонки x 12 рядов
-  const rows: number[][] = []
-  for (let r = 0; r < 12; r++) {
-    rows.push([r * 3 + 3, r * 3 + 2, r * 3 + 1])
-  }
+  // Ряды чисел (горизонтальный макет)
+  const row1 = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36]
+  const row2 = [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35]
+  const row3 = [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34]
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full mx-auto">
       {/* Выбор фишки */}
       <div className="flex items-center justify-center gap-2 mb-4">
         <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest mr-2">Фишка:</span>
@@ -288,7 +287,7 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
           <button
             key={v}
             onClick={() => onSelectChip(v)}
-            className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 text-xs font-black flex items-center justify-center transition-all ${CHIP_COLORS[v]} ${
+            className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 text-xs font-black flex items-center justify-center transition-all ${CHIP_COLORS[v]} ${
               selectedChip === v
                 ? 'ring-[3px] ring-white scale-110 shadow-[0_0_20px_rgba(255,255,255,0.5)] z-20'
                 : 'opacity-70 hover:opacity-100 hover:scale-105 hover:z-10'
@@ -300,42 +299,52 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
       </div>
 
       {/* Стол */}
-      <div className="bg-emerald-900/30 backdrop-blur-sm border border-emerald-700/30 rounded-2xl p-3 sm:p-4 shadow-[inset_0_2px_20px_rgba(0,0,0,0.3)]">
-        {/* 0 и 00 */}
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <NumberCell num={0} />
-          <NumberCell num={37} />
-        </div>
+      <div className="bg-[#0f1914]/80 backdrop-blur-md border border-emerald-700/30 rounded-xl p-2 sm:p-3 shadow-[inset_0_0_30px_rgba(0,0,0,0.8)] w-full overflow-x-auto">
+        <div className="min-w-[550px] flex flex-col gap-1">
+          
+          {/* Верхний блок: Зеро, Числа, Опции 2:1 */}
+          <div className="flex gap-1 h-[6.5rem] sm:h-[8rem]">
+            {/* 0 и 00 */}
+            <div className="flex flex-col gap-1 w-10 sm:w-12 shrink-0">
+              <NumberCell num={0} className="flex-1 h-auto" />
+              <NumberCell num={37} className="flex-1 h-auto" />
+            </div>
 
-        {/* Основная сетка */}
-        <div className="grid grid-cols-3 gap-1 mb-2">
-          {rows.map((row) =>
-            row.map(n => <NumberCell key={n} num={n} />)
-          )}
-        </div>
+            {/* Числа */}
+            <div className="flex-1 grid grid-cols-12 grid-rows-3 gap-1">
+              {row1.map(n => <NumberCell key={n} num={n} className="h-full" />)}
+              {row2.map(n => <NumberCell key={n} num={n} className="h-full" />)}
+              {row3.map(n => <NumberCell key={n} num={n} className="h-full" />)}
+            </div>
 
-        {/* Колонки */}
-        <div className="grid grid-cols-3 gap-1 mb-3">
-          <OutsideBet label="2:1" type={{ kind: 'column', col: 3 }} />
-          <OutsideBet label="2:1" type={{ kind: 'column', col: 2 }} />
-          <OutsideBet label="2:1" type={{ kind: 'column', col: 1 }} />
-        </div>
+            {/* Колонки 2:1 */}
+            <div className="flex flex-col gap-1 w-10 sm:w-12 shrink-0">
+              <OutsideBet label="2:1" type={{ kind: 'column', col: 3 }} className="flex-1 h-auto" />
+              <OutsideBet label="2:1" type={{ kind: 'column', col: 2 }} className="flex-1 h-auto" />
+              <OutsideBet label="2:1" type={{ kind: 'column', col: 1 }} className="flex-1 h-auto" />
+            </div>
+          </div>
 
-        {/* Дюжины */}
-        <div className="grid grid-cols-3 gap-1 mb-2">
-          <OutsideBet label="1-12" type={{ kind: 'dozen', group: 1 }} />
-          <OutsideBet label="13-24" type={{ kind: 'dozen', group: 2 }} />
-          <OutsideBet label="25-36" type={{ kind: 'dozen', group: 3 }} />
-        </div>
+          {/* Нижние блоки */}
+          <div className="ml-[calc(2.5rem+4px)] sm:ml-[calc(3rem+4px)] mr-[calc(2.5rem+4px)] sm:mr-[calc(3rem+4px)] flex flex-col gap-1">
+            {/* Дюжины */}
+            <div className="grid grid-cols-3 gap-1">
+              <OutsideBet label="1st 12" type={{ kind: 'dozen', group: 1 }} />
+              <OutsideBet label="2nd 12" type={{ kind: 'dozen', group: 2 }} />
+              <OutsideBet label="3rd 12" type={{ kind: 'dozen', group: 3 }} />
+            </div>
 
-        {/* Внешние ставки */}
-        <div className="grid grid-cols-6 gap-1">
-          <OutsideBet label="1-18" type={{ kind: 'low' }} />
-          <OutsideBet label="ЧЁТ" type={{ kind: 'even' }} />
-          <OutsideBet label="🔴" type={{ kind: 'red' }} className="!bg-red-700/60 !border-red-500/30" />
-          <OutsideBet label="⚫" type={{ kind: 'black' }} className="!bg-[#1a1a2e] !border-white/10" />
-          <OutsideBet label="НЕЧЁТ" type={{ kind: 'odd' }} />
-          <OutsideBet label="19-36" type={{ kind: 'high' }} />
+            {/* Внешние ставки */}
+            <div className="grid grid-cols-6 gap-1">
+              <OutsideBet label="1-18" type={{ kind: 'low' }} />
+              <OutsideBet label="EVEN" type={{ kind: 'even' }} />
+              <OutsideBet label="🔴" type={{ kind: 'red' }} className="!bg-red-700/60 !border-red-500/30" />
+              <OutsideBet label="⚫" type={{ kind: 'black' }} className="!bg-[#1a1a2e] !border-white/10" />
+              <OutsideBet label="ODD" type={{ kind: 'odd' }} />
+              <OutsideBet label="19-36" type={{ kind: 'high' }} />
+            </div>
+          </div>
+          
         </div>
       </div>
     </div>
