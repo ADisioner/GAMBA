@@ -161,7 +161,7 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
         if (allSame) payout = bet * (PAYOUTS[middle[0]] || 2)
         else if (twoSame) payout = Math.floor(bet * 1.5)
 
-        const result: GameResult = payout > 0 ? 'win' : 'loss'
+        const result: GameResult = payout > 0 ? 'win' : 'lose'
         
         // Показываем результат после небольшой паузы
         setTimeout(() => {
