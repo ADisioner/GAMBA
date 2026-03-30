@@ -18,6 +18,7 @@ interface Props {
 
 export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) {
   const [spinning, setSpinning] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false) // Блокировка кнопки до начала анимации
   const [spinId, setSpinId] = useState(0) // Уникальный ID для сброса framer-motion
   const [isAuto, setIsAuto] = useState(false)
   
@@ -61,14 +62,17 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
   }
 
   const spin = useCallback(async () => {
-    // Если уже крутимся — блокируем. Либо если превышен баланс
-    if (spinning || bet > balance) {
+    // Если уже крутимся или идет обработка транзакции — блокируем. Либо если превышен баланс
+    if (spinning || isProcessing || bet > balance) {
       if (bet > balance && isAuto) setIsAuto(false)
       return
     }
 
+    setIsProcessing(true)
+
     const success = await takeBet(bet)
     if (!success) {
+      setIsProcessing(false)
       setIsAuto(false)
       return
     }
@@ -93,8 +97,9 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
       setFinalReels(reels)
       finalReelsRef.current = reels
       setSpinning(true)
+      setIsProcessing(false)
     }, 10)
-  }, [bet, balance, spinning, luck, isAuto, takeBet])
+  }, [bet, balance, spinning, isProcessing, luck, isAuto, takeBet])
 
   useEffect(() => {
     if (isAuto && !spinning && bet <= balance) {
@@ -270,14 +275,14 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
               
               <Button 
                 onClick={spin} 
-                disabled={spinning || bet > balance} 
+                disabled={spinning || isProcessing || bet > balance} 
                 className={`relative w-40 h-40 sm:w-48 sm:h-48 rounded-full text-3xl font-black tracking-widest transition-all duration-300 border-[6px] shadow-[0_20px_50px_rgba(0,0,0,0.6)] ${
-                  spinning 
+                  (spinning || isProcessing)
                     ? 'bg-gray-900 text-white/20 border-white/5 shadow-none' 
                     : 'bg-gradient-to-b from-yellow-300 via-yellow-500 to-yellow-600 border-yellow-700/50 text-black hover:rotate-3'
                 }`}
               >
-                {spinning ? (
+                {(spinning || isProcessing) ? (
                   <motion.div 
                     animate={{ rotate: 360 }} 
                     transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}

@@ -101,6 +101,7 @@ function Reel({ spinning, finalSymbol, delay, onStop }: {
 
 export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: Props) {
   const [spinning, setSpinning] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [isAuto, setIsAuto] = useState(false)
   const [finalSymbols, setFinalSymbols] = useState<string[]>(['🍒', '💎', '🍒'])
   const finalSymbolsRef = useRef<string[]>(['🍒', '💎', '🍒'])
@@ -110,16 +111,23 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
   const resultProcessed = useRef(false)
 
   const spin = useCallback(async () => {
-    if (spinning || bet > balance) {
+    if (spinning || isProcessing || bet > balance) {
       if (bet > balance && isAuto) setIsAuto(false)
       return
     }
 
+    setIsProcessing(true)
+
     const success = await takeBet(bet)
-    if (!success) return
+    if (!success) {
+      setIsProcessing(false)
+      setIsAuto(false)
+      return
+    }
 
     sounds.bet()
     setSpinning(true)
+    setIsProcessing(false)
     setLastWin(null)
     setShowWin(false)
     setStoppedReels(0)
@@ -138,7 +146,7 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
 
     setFinalSymbols(finals)
     finalSymbolsRef.current = finals
-  }, [bet, balance, spinning, luck, isAuto, takeBet])
+  }, [bet, balance, spinning, isProcessing, luck, isAuto, takeBet])
 
   useEffect(() => {
     if (isAuto && !spinning && bet <= balance) {
@@ -288,15 +296,15 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
             
             <Button 
               onClick={spin} 
-              disabled={spinning || bet > balance} 
+              disabled={spinning || isProcessing || bet > balance} 
               size="lg"
               className={`relative w-48 sm:w-56 h-16 rounded-2xl text-lg font-black tracking-wider transition-all duration-300 border-t border-white/30 text-black shadow-[0_10px_20px_rgba(0,0,0,0.3)] ${
-                spinning 
+                (spinning || isProcessing) 
                   ? 'bg-gray-800 text-white/50 border-white/5 shadow-none' 
                   : 'bg-gradient-to-b from-yellow-300 via-yellow-500 to-yellow-600 hover:brightness-110'
               }`}
             >
-              {spinning ? (
+              {(spinning || isProcessing) ? (
                 <span className="flex items-center gap-3">
                   <motion.div animate={{ rotate: 180 }} transition={{ duration: 0.2, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
                   КРУТИТСЯ...
