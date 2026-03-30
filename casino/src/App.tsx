@@ -43,8 +43,8 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={profile ? <Navigate to="/hub" replace /> : <LoginPage />} />
-      <Route path="/hub" element={<PrivateRoute><HubPage /></PrivateRoute>} />
+      <Route path="/" element={profile ? <Navigate to="/lobby" replace /> : <LoginPage />} />
+      {/* <Route path="/hub" element={<PrivateRoute><HubPage /></PrivateRoute>} /> */}
 
       <Route path="/lobby" element={<PrivateRoute><LobbyPage /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
@@ -77,9 +77,8 @@ export default function App() {
 
 function SidebarWrapper() {
   const { profile } = useAuth();
-  const location = useLocation();
   
-  if (!profile || location.pathname === '/hub') return null;
+  if (!profile) return null;
 
   return <LiveFeedSidebar />;
 }

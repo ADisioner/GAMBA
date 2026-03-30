@@ -33,11 +33,13 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
   symbols: string[]; spinning: boolean; finalSymbol: string; delay: number; onStop: () => void
 }) {
   const [displaySymbols, setDisplaySymbols] = useState<string[]>([symbols[0], symbols[1], symbols[2]])
+  const [internalSpinning, setInternalSpinning] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (spinning) {
+      setInternalSpinning(true)
       let tick = 0
       intervalRef.current = setInterval(() => {
         tick++
@@ -54,9 +56,12 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
         const top = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
         const bottom = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
         setDisplaySymbols([top, finalSymbol, bottom])
+        setInternalSpinning(false) // Останавливаем анимацию этого конкретного барабана
         sounds.slotStop()
         onStop()
-      }, 1200 + delay)
+      }, 1000 + delay)
+    } else {
+      setInternalSpinning(false)
     }
 
     return () => {
@@ -67,24 +72,23 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 shadow-[inset_0_4px_24px_rgba(0,0,0,0.6)]">
-      {/* Стекломорфичная накладка градиента для эффекта барабана */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/80 z-20 pointer-events-none" />
       
       {displaySymbols.map((sym, i) => (
         <motion.div
           key={i}
-          animate={spinning ? { 
-            y: [50, -50], 
-            scaleY: [1, 1.4, 1], // Вытягиваем символ для эффекта скорости
-            opacity: [0.5, 0.8, 0.5],
-            filter: ['blur(0px)', 'blur(3px)', 'blur(0px)']
+          animate={internalSpinning ? { 
+            y: [0, -20, 0], 
+            scaleY: [1, 1.3, 1],
+            opacity: [0.6, 1, 0.6],
+            filter: ['blur(0px)', 'blur(4px)', 'blur(0px)']
           } : { 
             y: 0, 
             scaleY: 1, 
             opacity: 1,
             filter: 'blur(0px)'
           }}
-          transition={spinning ? { duration: 0.1, repeat: Infinity, ease: 'linear' } : { type: 'spring', damping: 15 }}
+          transition={internalSpinning ? { duration: 0.1, repeat: Infinity, ease: 'linear' } : { type: 'spring', damping: 12, stiffness: 200 }}
           className={`w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center text-5xl sm:text-6xl ${
             i === 1 ? 'relative z-10 drop-shadow-[0_0_15px_rgba(255,215,0,0.4)]' : 'opacity-30 scale-90'
           }`}

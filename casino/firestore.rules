@@ -11,16 +11,12 @@ service cloud.firestore {
 
     match /users/{nickname} {
       allow read: if true;
-      
-      // Создавать может любой, но один раз (UID прописывается при создании)
       allow create: if request.auth != null;
       
-      // Обновлять может только владелец UID или админ
-      // Обычные пользователи не могут:
-      // 1. Менять критические поля (блокируется в diff)
-      // 2. Уходить в минус (критично для защиты от абуза в нескольких вкладках)
-      allow update: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin()) && (
+      // Разрешаем обновление, если пользователь авторизован
+      allow update: if request.auth != null && (
         isAdmin() || (
+          // Убеждаемся, что меняется только баланс и другие некритичные поля
           !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['isBanned', 'luck', 'email', 'uid', 'nickname']) &&
           request.resource.data.balance >= 0

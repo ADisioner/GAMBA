@@ -70,20 +70,27 @@ export function GamePage() {
   }, [room?.id])
 
   const takeBet = useCallback(async (amount: number) => {
-    if (!profile || profile.balance < amount) {
+    if (!profile || !profile.nickname) {
+      toast.error('Ошибка авторизации')
+      return false
+    }
+
+    if (profile.balance < amount) {
       toast.error('Недостаточно средств')
       return false
     }
     
     try {
-      await updateDoc(doc(db, 'users', profile.nickname), {
+      const userRef = doc(db, 'users', profile.nickname)
+      await updateDoc(userRef, {
         balance: increment(-amount),
         updatedAt: Date.now()
       })
       return true
-    } catch (e) {
-      console.error('Take bet error:', e)
-      toast.error('Ошибка при списании ставки')
+    } catch (e: any) {
+      console.error('CRITICAL: Take bet error detail:', e)
+      console.error('Attempted nickname:', profile.nickname)
+      toast.error(`Ошибка списания: ${e.message || 'неизвестная ошибка'}`)
       return false
     }
   }, [profile])
