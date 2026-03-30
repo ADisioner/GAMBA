@@ -14,13 +14,7 @@ interface Props {
 const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣']
 const PAYOUTS: Record<string, number> = { '7️⃣': 50, '💎': 25, '🍇': 10, '🍊': 5, '🍋': 3, '🍒': 2 }
 
-/** Генерирует случайную ленту символов для анимации */
-function generateReelStrip(length: number): string[] {
-  return Array.from({ length }, () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)])
-}
-
 function getWeightedSymbol(luck: number): string {
-  // Luck 0-10. При luck=10 огромный шанс выпадения 💎 и 7️⃣
   const bonus = Math.max(0, luck / 10)
   const weights = SYMBOLS.map((_, i) => {
     const base = SYMBOLS.length - i
@@ -35,7 +29,6 @@ function getWeightedSymbol(luck: number): string {
   return SYMBOLS[0]
 }
 
-/** Компонент одного барабана */
 function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
   symbols: string[]; spinning: boolean; finalSymbol: string; delay: number; onStop: () => void
 }) {
@@ -45,7 +38,6 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
 
   useEffect(() => {
     if (spinning) {
-      // Быстро меняем символы — имитация вращения
       let tick = 0
       intervalRef.current = setInterval(() => {
         tick++
@@ -55,12 +47,10 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
           SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
           SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
         ])
-      }, 60)
+      }, 50)
 
-      // Останавливаемся после delay мс
       timeoutRef.current = setTimeout(() => {
         if (intervalRef.current) clearInterval(intervalRef.current)
-        // Финальная позиция: finalSymbol в центре
         const top = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
         const bottom = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
         setDisplaySymbols([top, finalSymbol, bottom])
@@ -76,24 +66,30 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
   }, [spinning, finalSymbol, delay, onStop])
 
   return (
-    <div className="bg-marble-light rounded-xl border border-gold/20 overflow-hidden">
+    <div className="relative overflow-hidden rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 shadow-[inset_0_4px_24px_rgba(0,0,0,0.6)]">
+      {/* Стекломорфичная накладка градиента для эффекта барабана */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/80 z-20 pointer-events-none" />
+      
       {displaySymbols.map((sym, i) => (
         <motion.div
           key={i}
-          animate={spinning ? { opacity: [1, 0.6, 1] } : { opacity: 1 }}
-          transition={spinning ? { duration: 0.12, repeat: Infinity } : { duration: 0.3 }}
-          className={`w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center text-5xl sm:text-6xl transition-all ${
-            i === 1 ? 'bg-marble-light/80 scale-110 relative z-10' : 'opacity-40'
+          animate={spinning ? { 
+            y: [50, -50], 
+            scaleY: [1, 1.4, 1], // Вытягиваем символ для эффекта скорости
+            opacity: [0.5, 0.8, 0.5],
+            filter: ['blur(0px)', 'blur(3px)', 'blur(0px)']
+          } : { 
+            y: 0, 
+            scaleY: 1, 
+            opacity: 1,
+            filter: 'blur(0px)'
+          }}
+          transition={spinning ? { duration: 0.1, repeat: Infinity, ease: 'linear' } : { type: 'spring', damping: 15 }}
+          className={`w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center text-5xl sm:text-6xl ${
+            i === 1 ? 'relative z-10 drop-shadow-[0_0_15px_rgba(255,215,0,0.4)]' : 'opacity-30 scale-90'
           }`}
         >
-          <motion.span
-            key={sym + i + (spinning ? 'spin' : 'stop')}
-            initial={!spinning ? { y: -20, opacity: 0 } : false}
-            animate={!spinning ? { y: 0, opacity: 1 } : {}}
-            transition={{ type: 'spring', damping: 12, delay: i === 1 ? 0.05 : 0 }}
-          >
-            {sym}
-          </motion.span>
+          {sym}
         </motion.div>
       ))}
     </div>
@@ -103,7 +99,7 @@ function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
 export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: Props) {
   const [spinning, setSpinning] = useState(false)
   const [isAuto, setIsAuto] = useState(false)
-  const [finalSymbols, setFinalSymbols] = useState<string[]>(['🍒', '🍋', '🍊'])
+  const [finalSymbols, setFinalSymbols] = useState<string[]>(['🍒', '💎', '🍒'])
   const [stoppedReels, setStoppedReels] = useState(0)
   const [lastWin, setLastWin] = useState<number | null>(null)
   const [showWin, setShowWin] = useState(false)
@@ -125,7 +121,6 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
     setStoppedReels(0)
     resultProcessed.current = false
 
-    // При АВТО-катке удача снижается на 30%
     const currentLuck = isAuto ? luck * 0.7 : luck
 
     const finals: string[] = []
@@ -140,7 +135,6 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
     setFinalSymbols(finals)
   }, [bet, balance, spinning, luck, isAuto])
 
-  // Автоматическая прокрутка
   useEffect(() => {
     if (isAuto && !spinning && bet <= balance) {
       const timer = setTimeout(() => {
@@ -150,14 +144,12 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
     }
   }, [isAuto, spinning, bet, balance, spin])
 
-  /** Когда все 3 барабана остановились — считаем результат */
   const handleReelStop = useCallback(() => {
     setStoppedReels(prev => {
       const next = prev + 1
       if (next >= 3 && !resultProcessed.current) {
         resultProcessed.current = true
 
-        // Оценка результата
         const middle = finalSymbols
         const allSame = middle[0] === middle[1] && middle[1] === middle[2]
         const twoSame = middle[0] === middle[1] || middle[1] === middle[2]
@@ -191,95 +183,145 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
   }, [finalSymbols, bet, onResult])
 
   return (
-    <div className="p-8 flex flex-col items-center">
-      {/* Slot machine */}
-      <div className="relative mb-8">
-        <div className="bg-marble rounded-2xl border-2 border-gold/40 p-6 glow-gold-sm">
-          {/* Win line indicators */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-12 bg-gold rounded-r-full z-20" />
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-12 bg-gold rounded-l-full z-20" />
+    <div className="p-8 flex flex-col items-center justify-center min-h-[600px] w-full relative z-0">
+      
+      {/* Фоновое свечение для создания пространства */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-yellow-500/10 blur-[120px] rounded-full pointer-events-none -z-10" />
 
-          {/* Win line */}
-          <div className="absolute left-2 right-2 top-1/2 -translate-y-1/2 h-[2px] bg-gold/30 z-10" />
+      {/* Основной контейнер с 3D перспективой */}
+      <motion.div 
+        className="relative mb-12"
+        initial={{ rotateX: 10, y: 20, opacity: 0 }}
+        animate={{ rotateX: 5, y: 0, opacity: 1 }}
+        transition={{ duration: 1, ease: 'easeOut' }}
+        style={{ perspective: '1200px' }}
+      >
+        <div className="bg-white/5 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.1)] p-6 sm:p-8 transform-gpu preserve-3d">
+          
+          {/* Дизайнерская линия выигрыша (лазер) */}
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-gradient-to-r from-transparent via-yellow-400/80 to-transparent shadow-[0_0_15px_5px_rgba(250,204,21,0.3)] z-30 pointer-events-none" />
+          
+          {/* Декоративные винты / крепления по краям стекла */}
+          <div className="absolute top-4 left-4 w-2 h-2 rounded-full bg-white/20 shadow-inner" />
+          <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-white/20 shadow-inner" />
+          <div className="absolute bottom-4 left-4 w-2 h-2 rounded-full bg-white/20 shadow-inner" />
+          <div className="absolute bottom-4 right-4 w-2 h-2 rounded-full bg-white/20 shadow-inner" />
 
-          <div className="flex gap-3">
+          {/* Барабаны */}
+          <div className="flex gap-4">
             {[0, 1, 2].map(i => (
               <Reel
                 key={i}
                 symbols={[SYMBOLS[i], SYMBOLS[(i+1)%6], SYMBOLS[(i+2)%6]]}
                 spinning={spinning}
                 finalSymbol={finalSymbols[i]}
-                delay={i * 400}
+                delay={i * 450}
                 onStop={handleReelStop}
               />
             ))}
           </div>
         </div>
 
-        {/* Декоративные огни сверху */}
-        <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex gap-3">
+        {/* LED индикаторы-огни (улучшенные) */}
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex gap-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className={`w-2 h-2 rounded-full ${showWin ? 'bg-gold animate-pulse' : 'bg-gold/30'}`} />
+            <div key={i} className="relative">
+              <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                showWin 
+                  ? 'bg-yellow-400 shadow-[0_0_15px_#facc15] animate-pulse' 
+                  : spinning 
+                    ? 'bg-red-500 shadow-[0_0_10px_#ef4444]' 
+                    : 'bg-white/10 shadow-inner'
+              }`} />
+            </div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Win display */}
-      <AnimatePresence>
-        {showWin && lastWin && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={{ type: 'spring', damping: 8 }}
-            className="mb-6 text-center"
-          >
-            <p className="text-4xl font-bold text-gold text-glow-gold">
-              🎉 ВЫИГРЫШ!
-            </p>
-            <p className="text-2xl font-bold text-gold-light mt-1">
-              +${lastWin.toLocaleString()}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Кнопки управления */}
-      <div className="flex items-center gap-4">
-        <label className="flex flex-col items-center gap-1 cursor-pointer">
-          <span className="text-xs font-bold text-gold/70">АВТО</span>
-          <div className={`w-14 h-7 rounded-full transition-colors flex items-center px-1 ${isAuto ? 'bg-gold' : 'bg-gray-800 border border-gold/30'}`}
-               onClick={() => setIsAuto(!isAuto)}>
-             <motion.div className="w-5 h-5 rounded-full bg-white shadow-md"
-                         animate={{ x: isAuto ? 28 : 0 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} />
-          </div>
-        </label>
-
-        <motion.div whileTap={{ scale: 0.95 }}>
-          <Button onClick={spin} disabled={spinning || bet > balance} size="xl"
-            className="w-48 sm:w-52 text-lg font-bold h-14">
-            {spinning ? (
-              <span className="flex items-center gap-2">
-                <motion.span animate={{ rotate: 360 }} transition={{ duration: 0.5, repeat: Infinity, ease: 'linear' }}>🎰</motion.span>
-                Крутим...
-              </span>
-            ) : '🎰 КРУТИТЬ'}
-          </Button>
-        </motion.div>
-      </div>
-
-      {/* Paytable */}
-      <div className="mt-8 grid grid-cols-3 gap-2 text-center text-xs text-muted-foreground">
-        {Object.entries(PAYOUTS).reverse().map(([sym, mult]) => (
-          <div key={sym} className="px-3 py-2 rounded-lg bg-marble-light/30 border border-gold/10 hover:border-gold/30 transition-colors">
-            <span className="text-lg">{sym}{sym}{sym}</span>
-            <span className="block text-gold font-semibold mt-1">×{mult}</span>
-          </div>
-        ))}
-        <div className="px-3 py-2 rounded-lg bg-marble-light/30 border border-gold/10">
-          <span className="text-lg">🔢🔢➖</span>
-          <span className="block text-gold font-semibold mt-1">×1.5</span>
+      {/* Зона элементов управления и результата */}
+      <div className="flex flex-col items-center w-full max-w-lg relative">
+        
+        {/* Win display */}
+        <div className="h-24 flex items-center justify-center mb-4">
+          <AnimatePresence mode="wait">
+            {showWin && lastWin && (
+              <motion.div
+                key="win"
+                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, filter: 'blur(10px)' }}
+                transition={{ type: 'spring', damping: 10, stiffness: 100 }}
+                className="text-center bg-black/40 backdrop-blur-md border border-yellow-500/30 px-8 py-4 rounded-2xl shadow-[0_0_40px_rgba(250,204,21,0.2)]"
+              >
+                <p className="text-xl font-bold tracking-widest text-yellow-500/80 uppercase">Блестяще</p>
+                <p className="text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 drop-shadow-sm mt-1">
+                  +${lastWin.toLocaleString()}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
+
+        {/* Контролы */}
+        <div className="flex items-center gap-8 w-full justify-center bg-white/5 backdrop-blur-lg border border-white/5 p-4 rounded-3xl shadow-xl">
+          
+          {/* Авто-тогл (Glassmorphic) */}
+          <label className="flex flex-col items-center gap-2 cursor-pointer group">
+            <span className="text-[10px] font-bold tracking-[0.2em] text-white/50 group-hover:text-yellow-400 transition-colors">AUTO</span>
+            <div className={`relative w-16 h-8 rounded-full transition-all duration-500 flex items-center px-1 shadow-inner ${
+              isAuto ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]' : 'bg-black/50 border border-white/10'
+            }`} onClick={() => setIsAuto(!isAuto)}>
+               <motion.div 
+                 className={`w-6 h-6 rounded-full shadow-lg ${isAuto ? 'bg-white' : 'bg-white/40'}`}
+                 animate={{ x: isAuto ? 32 : 0 }} 
+                 transition={{ type: 'spring', stiffness: 500, damping: 30 }} 
+               />
+            </div>
+          </label>
+
+          {/* Главная кнопка КРУТИТЬ (Antigravity Button) */}
+          <motion.div 
+            whileHover={{ scale: 1.05, y: -2 }} 
+            whileTap={{ scale: 0.95, y: 2 }}
+            className="relative"
+          >
+            {/* Свечение под кнопкой */}
+            <div className={`absolute inset-0 bg-yellow-500 blur-xl rounded-2xl transition-opacity duration-300 ${spinning ? 'opacity-0' : 'opacity-40'}`} />
+            
+            <Button 
+              onClick={spin} 
+              disabled={spinning || bet > balance} 
+              size="lg"
+              className={`relative w-48 sm:w-56 h-16 rounded-2xl text-lg font-black tracking-wider transition-all duration-300 border-t border-white/30 text-black shadow-[0_10px_20px_rgba(0,0,0,0.3)] ${
+                spinning 
+                  ? 'bg-gray-800 text-white/50 border-white/5 shadow-none' 
+                  : 'bg-gradient-to-b from-yellow-300 via-yellow-500 to-yellow-600 hover:brightness-110'
+              }`}
+            >
+              {spinning ? (
+                <span className="flex items-center gap-3">
+                  <motion.div animate={{ rotate: 180 }} transition={{ duration: 0.2, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                  КРУТИТСЯ...
+                </span>
+              ) : 'КРУТИТЬ СЛОТ'}
+            </Button>
+          </motion.div>
+        </div>
+
+        {/* Таблица выплат (Minimalist Luxury) */}
+        <div className="mt-8 grid grid-cols-6 sm:grid-cols-7 gap-2 text-center w-full">
+          {Object.entries(PAYOUTS).map(([sym, mult]) => (
+            <div key={sym} className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-yellow-500/30 transition-all cursor-default group">
+              <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">{sym}</span>
+              <span className="text-[10px] font-bold text-yellow-500/70 mt-1">x{mult}</span>
+            </div>
+          ))}
+          <div className="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-yellow-500/30 transition-all cursor-default group hidden sm:flex">
+            <span className="text-xl sm:text-2xl opacity-70">❓</span>
+            <span className="text-[10px] font-bold text-yellow-500/70 mt-1">x1.5</span>
+          </div>
+        </div>
+
       </div>
     </div>
   )
