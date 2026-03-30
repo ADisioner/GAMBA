@@ -18,6 +18,7 @@ interface Props {
 
 export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) {
   const [spinning, setSpinning] = useState(false)
+  const [spinId, setSpinId] = useState(0) // Уникальный ID для сброса framer-motion
   const [isAuto, setIsAuto] = useState(false)
   
   const [finalReels, setFinalReels] = useState<SymbolType[][]>([
@@ -60,29 +61,39 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
   }
 
   const spin = useCallback(async () => {
+    // Если уже крутимся — блокируем. Либо если превышен баланс
     if (spinning || bet > balance) {
       if (bet > balance && isAuto) setIsAuto(false)
       return
     }
 
     const success = await takeBet(bet)
-    if (!success) return
+    if (!success) {
+      setIsAuto(false)
+      return
+    }
 
+    // Разблокируем звук для браузера
     sounds.bet()
     sounds.resume();
-    
-    setSpinning(true)
+
+    // Сброс стейтов перед новым кручением
     setLastWin(null)
     setShowWin(false)
     setBigWin(false)
     setStoppedReels(0)
     setWinLines([])
-
-    const currentLuck = isAuto ? luck * 0.7 : luck
-    const reels = generateReels(currentLuck)
+    setSpinId(prev => prev + 1) // Меняем ID чтобы framer-motion пересоздал компонент
     
-    setFinalReels(reels)
-    finalReelsRef.current = reels
+    // Даем React миллисекунду на сброс ключей, затем крутим
+    setTimeout(() => {
+      const currentLuck = isAuto ? luck * 0.7 : luck
+      const reels = generateReels(currentLuck)
+      
+      setFinalReels(reels)
+      finalReelsRef.current = reels
+      setSpinning(true)
+    }, 10)
   }, [bet, balance, spinning, luck, isAuto, takeBet])
 
   useEffect(() => {
@@ -188,7 +199,7 @@ export function EpicSlotsGame({ bet, luck, balance, onResult, takeBet }: Props) 
           <div className="flex gap-4 sm:gap-6 relative z-10">
             {[0, 1, 2, 3, 4].map(i => (
               <EpicReel
-                key={i}
+                key={`${spinId}-${i}`} // Критично для Framer Motion, чтобы сбросить стейт анимации
                 index={i}
                 spinning={spinning}
                 finalSymbols={finalReels[i]}
