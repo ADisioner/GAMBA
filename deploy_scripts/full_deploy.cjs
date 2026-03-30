@@ -17,7 +17,7 @@ conn.on('ready', () => {
     'cd /root/GAMBA_SOURCE',
     
     // 2. Скачиваем последние обновления
-    'echo "📥 Git Pull..." && git pull origin main',
+    'echo "📥 Git Pull..." && git reset --hard && git pull origin main',
     
     // 3. Обновляем зависимости сервера и собираем
     'echo "📦 Обновляем серверные пакеты..." && cd server && npm install',
