@@ -17,9 +17,14 @@ export function EpicReel({ spinning, finalSymbols, delay, onStop, index, highlig
   const [internalSpinning, setInternalSpinning] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
   
-  const [strip, setStrip] = useState<SymType[]>(
-    Array(3).fill('?').map(() => EPIC_SYMBOLS[Math.floor(Math.random() * EPIC_SYMBOLS.length)]) as SymType[]
-  )
+  // Инициализируем strip сразу из 28 элементов, чтобы при y=-2750 (позиция 25-27) были видны символы
+  const [strip, setStrip] = useState<SymType[]>(() => {
+    const initial = Array(28).fill('?').map(() => EPIC_SYMBOLS[Math.floor(Math.random() * EPIC_SYMBOLS.length)]) as SymType[]
+    initial[25] = finalSymbols[0]
+    initial[26] = finalSymbols[1]
+    initial[27] = finalSymbols[2]
+    return initial
+  })
 
   useEffect(() => {
     if (spinning) {
@@ -74,7 +79,7 @@ export function EpicReel({ spinning, finalSymbols, delay, onStop, index, highlig
           : { y: yFinalOffset || 0 }
         }
         className="flex flex-col items-center"
-        initial={{ y: 0 }}
+        initial={false}  // false = не анимировать mount, сразу показать animate-значение
       >
         {strip.map((sym, i) => {
           const rowIdx = i - 25; // 0, 1, 2 for visible area
