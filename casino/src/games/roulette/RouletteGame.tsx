@@ -139,7 +139,7 @@ function RouletteWheel({ spinning, winNumber, onSpinEnd }: {
 
       {/* Колесо */}
       <motion.div
-        className="w-full h-full rounded-full border-4 border-gold/50 shadow-[0_0_40px_rgba(212,175,55,0.3),inset_0_0_30px_rgba(0,0,0,0.5)] overflow-hidden relative"
+        className="w-full h-full rounded-full border-[6px] border-[#2A2A1A] ring-4 ring-gold/40 shadow-[0_0_50px_rgba(212,175,55,0.3),inset_0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden relative bg-black/80"
         animate={{ rotate: rotation }}
         transition={{
           duration: spinning ? 5 : 0,
@@ -185,8 +185,8 @@ function RouletteWheel({ spinning, winNumber, onSpinEnd }: {
         })}
 
         {/* Центр колеса */}
-        <div className="absolute inset-[30%] rounded-full bg-gradient-to-br from-[#1a1a2e] to-[#0d0d1a] border-2 border-gold/40 shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] flex items-center justify-center">
-          <span className="text-gold font-serif text-lg font-bold tracking-wide">GAMBA</span>
+        <div className="absolute inset-[28%] rounded-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-700 via-gray-900 to-black border-4 border-[#3A3A2A] shadow-[0_0_15px_rgba(0,0,0,0.8),inset_0_5px_15px_rgba(255,255,255,0.1)] flex items-center justify-center">
+          <span className="text-transparent bg-clip-text bg-gradient-to-b from-gold-light via-gold to-gold-dark font-serif text-xl font-black tracking-widest drop-shadow-[0_2px_2px_rgba(0,0,0,1)]">GAMBA</span>
         </div>
       </motion.div>
     </div>
@@ -288,10 +288,10 @@ function BettingTable({ bets, selectedChip, onPlaceBet, onSelectChip, disabled, 
           <button
             key={v}
             onClick={() => onSelectChip(v)}
-            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 text-xs font-black flex items-center justify-center transition-all ${CHIP_COLORS[v]} ${
+            className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 text-xs font-black flex items-center justify-center transition-all ${CHIP_COLORS[v]} ${
               selectedChip === v
-                ? 'ring-2 ring-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                : 'opacity-60 hover:opacity-90'
+                ? 'ring-[3px] ring-white scale-110 shadow-[0_0_20px_rgba(255,255,255,0.5)] z-20'
+                : 'opacity-70 hover:opacity-100 hover:scale-105 hover:z-10'
             }`}
           >
             {v}
@@ -459,30 +459,41 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
   }, [winNumber, bets, totalBet, onResult])
 
   return (
-    <div className="py-4 px-2 sm:px-4 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-6 lg:gap-12 w-full max-w-7xl mx-auto">
+    <div className="py-4 px-2 sm:px-4 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-8 lg:gap-14 w-full max-w-[1400px] mx-auto">
       
-      {/* Левая колонка: Ставки, история и контролы */}
-      <div className="flex-1 w-full max-w-2xl flex flex-col order-2 lg:order-1">
+      {/* Левая колонка: Колесо */}
+      <div className="w-full lg:w-auto flex flex-col items-center justify-start xl:sticky xl:top-24 order-1 lg:order-1 shrink-0 z-10">
+        <div className="mb-4 lg:mb-0 scale-90 sm:scale-100 lg:scale-110 xl:scale-125 origin-top transition-transform duration-500">
+          <RouletteWheel
+            spinning={spinning}
+            winNumber={winNumber ?? 0}
+            onSpinEnd={handleSpinEnd}
+          />
+        </div>
+      </div>
+
+      {/* Правая колонка: Ставки, история и контролы */}
+      <div className="flex-1 w-full max-w-3xl flex flex-col order-2 lg:order-2">
         
         {/* Результат */}
-        <div className="h-16 flex items-center justify-center mb-4">
+        <div className="h-20 flex items-center justify-center mb-4">
           <AnimatePresence mode="wait">
             {showResult && winNumber !== null && (
               <motion.div
                 key="result"
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.5, opacity: 0 }}
+                initial={{ scale: 0.5, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.5, opacity: 0, y: -20 }}
                 className="text-center"
               >
-                <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-2xl border backdrop-blur-md shadow-xl ${
-                  getColor(winNumber) === 'red' ? 'bg-red-900/50 border-red-500/40' :
-                  getColor(winNumber) === 'black' ? 'bg-[#1a1a2e]/80 border-white/20' :
-                  'bg-emerald-900/50 border-emerald-500/40'
+                <div className={`inline-flex items-center gap-4 px-8 py-3 rounded-[2rem] border-2 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all ${
+                  getColor(winNumber) === 'red' ? 'bg-red-900/60 border-red-500/50 shadow-red-900/40' :
+                  getColor(winNumber) === 'black' ? 'bg-[#1a1a2e]/90 border-white/20 shadow-white/10' :
+                  'bg-emerald-900/60 border-emerald-500/50 shadow-emerald-900/40'
                 }`}>
-                  <span className="text-3xl font-black text-white">{displayNumber(winNumber)}</span>
+                  <span className="text-4xl font-black text-white px-2">{displayNumber(winNumber)}</span>
                   {lastWin && lastWin > 0 && (
-                    <span className="text-2xl font-black text-gold">+{lastWin.toLocaleString()}</span>
+                    <span className="text-3xl font-black text-gold border-l border-white/10 pl-4">{lastWin.toLocaleString()}</span>
                   )}
                 </div>
               </motion.div>
@@ -492,42 +503,46 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
 
         {/* История */}
         {history.length > 0 ? (
-          <div className="flex gap-1.5 flex-wrap justify-center mb-6 bg-black/30 backdrop-blur-sm px-4 py-2 rounded-full border border-white/5">
+          <div className="flex gap-2 flex-wrap justify-center mb-8 bg-black/40 backdrop-blur-md px-6 py-3 rounded-full border border-white/10 shadow-inner">
             {history.map((n, i) => (
-              <span
-                key={i}
-                className={`w-8 h-8 rounded-full text-[10px] font-black flex items-center justify-center ${
-                  getColor(n) === 'red' ? 'bg-red-600/80 text-white' :
-                  getColor(n) === 'black' ? 'bg-[#1a1a2e] text-white border border-white/10' :
-                  'bg-emerald-600/80 text-white'
-                } ${i === 0 ? 'ring-1 ring-gold' : 'opacity-70'}`}
+              <motion.span
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: i === 0 ? 1 : 0.7 }}
+                key={`${i}-${n}`}
+                className={`w-9 h-9 rounded-full text-[11px] font-black flex items-center justify-center shadow-lg ${
+                  getColor(n) === 'red' ? 'bg-red-600/90 text-white' :
+                  getColor(n) === 'black' ? 'bg-gray-900 text-white border border-gray-700' :
+                  'bg-emerald-600/90 text-white'
+                } ${i === 0 ? 'ring-2 ring-gold scale-110 z-10' : ''} transition-all duration-300`}
               >
                 {displayNumber(n)}
-              </span>
+              </motion.span>
             ))}
           </div>
         ) : (
-          <div className="h-[50px] mb-6" /> /* Заглушка, чтобы не прыгало */
+          <div className="h-[60px] mb-8" /> 
         )}
 
         {/* Стол ставок */}
-        <BettingTable
-          bets={bets}
-          selectedChip={selectedChip}
-          onPlaceBet={placeBet}
-          onSelectChip={setSelectedChip}
-          disabled={spinning || showResult}
-          winNumber={winNumber}
-          showResult={showResult}
-        />
+        <div className="transform-gpu transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.1)] rounded-2xl">
+          <BettingTable
+            bets={bets}
+            selectedChip={selectedChip}
+            onPlaceBet={placeBet}
+            onSelectChip={setSelectedChip}
+            disabled={spinning || showResult}
+            winNumber={winNumber}
+            showResult={showResult}
+          />
+        </div>
 
         {/* Контролы */}
-        <div className="mt-6 flex items-center gap-3 w-full">
+        <div className="mt-8 flex items-center gap-4 w-full">
           <Button
             variant="outline"
             onClick={clearBets}
             disabled={spinning || showResult || bets.length === 0}
-            className="flex-1 border-white/10 text-white/60 hover:text-white h-14"
+            className="flex-1 bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] h-16 rounded-2xl font-bold uppercase tracking-wider backdrop-blur-md transition-all duration-300 active:scale-95"
           >
             Очистить
           </Button>
@@ -536,43 +551,37 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
             variant="outline"
             onClick={repeatBets}
             disabled={spinning || showResult || lastBetsRef.current.length === 0}
-            className="flex-1 border-white/10 text-white/60 hover:text-white h-14"
+            className="flex-1 bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] h-16 rounded-2xl font-bold uppercase tracking-wider backdrop-blur-md transition-all duration-300 active:scale-95"
           >
             Повторить
           </Button>
 
-          <motion.div className="flex-[2] relative" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <div className={`absolute inset-0 bg-gold blur-lg rounded-2xl transition-opacity ${spinning ? 'opacity-0' : 'opacity-30'}`} />
+          <div className="flex-[2] relative group">
+            <div className={`absolute -inset-1 bg-gradient-to-r from-gold-light via-gold to-gold-dark blur-lg rounded-[2rem] transition-all duration-500 opacity-60 group-hover:opacity-100 ${spinning ? '!opacity-0' : ''}`} />
             <Button
               onClick={spin}
               disabled={spinning || showResult || bets.length === 0 || totalBet > balance}
-              className={`relative w-full h-14 rounded-2xl text-lg font-black tracking-wider transition-all border-t border-white/20 shadow-[0_8px_20px_rgba(0,0,0,0.3)] ${
+              className={`relative w-full h-16 rounded-2xl text-xl font-black tracking-widest transition-all duration-300 border border-white/10 overflow-hidden ${
                 spinning
-                  ? 'bg-gray-800 text-white/40'
-                  : 'bg-gradient-to-b from-yellow-300 via-yellow-500 to-yellow-600 text-black hover:brightness-110'
+                  ? 'bg-gray-800/80 text-white/40 cursor-not-allowed border-transparent'
+                  : 'bg-gradient-to-br from-[#FFDF00] via-[#D4AF37] to-[#996515] text-[#1A1A1A] hover:brightness-110 active:scale-[0.98]'
               }`}
             >
+              {/* Эффект блика на кнопке при наведении */}
+              {!spinning && (
+                <div className="absolute inset-0 -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-[1.5s] ease-in-out bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12" />
+              )}
+              
               {spinning ? (
-                <span className="flex items-center gap-2">
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.5, repeat: Infinity, ease: 'linear' }} className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" />
+                <span className="flex items-center gap-3">
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} className="w-6 h-6 border-3 border-white/20 border-t-white rounded-full" />
                   КРУТИТСЯ...
                 </span>
               ) : (
                 `КРУТИТЬ${totalBet > 0 ? ` (${totalBet.toLocaleString()})` : ''}`
               )}
             </Button>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Правая колонка: Колесо */}
-      <div className="w-full lg:w-auto flex flex-col items-center justify-start xl:sticky xl:top-24 order-1 lg:order-2 shrink-0">
-        <div className="mb-4 lg:mb-0 scale-90 sm:scale-100 lg:scale-[1.1] origin-top">
-          <RouletteWheel
-            spinning={spinning}
-            winNumber={winNumber ?? 0}
-            onSpinEnd={handleSpinEnd}
-          />
+          </div>
         </div>
       </div>
 
