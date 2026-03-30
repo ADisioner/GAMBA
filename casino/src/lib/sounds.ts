@@ -192,4 +192,9 @@ export const sounds = {
     playLuxuryTone(1500, 0.05, 'sine', 0.08)
     setTimeout(() => playLuxuryTone(1800, 0.05, 'sine', 0.06), 40)
   },
+
+  /** Принудительное возобновление AudioContext (для браузеров) */
+  resume() {
+    getCtx();
+  }
 }

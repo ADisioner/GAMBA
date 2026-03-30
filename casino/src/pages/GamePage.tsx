@@ -9,6 +9,7 @@ import { doc, updateDoc, addDoc, collection, setDoc, increment } from 'firebase/
 import { db } from '@/lib/firebase'
 import { toast } from 'sonner'
 import { updateLuck } from '@/lib/luck'
+import { sounds } from '@/lib/sounds'
 import { useMultiplayerRoom } from '@/hooks/useMultiplayerRoom'
 import type { GameType, GameResult } from '@/types'
 import { SlotsGame } from '@/games/slots/SlotsGame'
@@ -70,6 +71,21 @@ export function GamePage() {
       setBet(room.minBet)
     }
   }, [room?.id])
+
+  // Click-to-resume audio (fixes Chrome/Safari audio suppression)
+  useEffect(() => {
+    const handleInteraction = () => {
+      sounds.resume();
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('keydown', handleInteraction);
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('keydown', handleInteraction);
+    };
+  }, []);
 
   const takeBet = useCallback(async (amount: number) => {
     if (!profile || !profile.nickname) {
@@ -184,6 +200,7 @@ export function GamePage() {
   }
 
   const isRoulette = gameType === 'roulette'
+  const isEpicSlots = gameType === 'epic-slots'
 
   return (
     <div className="min-h-screen">
@@ -250,7 +267,7 @@ export function GamePage() {
           </div>
         </motion.div>
 
-        <div className={`rounded-3xl ${isRoulette ? 'bg-transparent border-none' : 'border border-gold/20 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl shadow-black/50'}`}>
+        <div className={`rounded-3xl ${(isRoulette || isEpicSlots) ? 'bg-transparent border-none overflow-visible' : 'border border-gold/20 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl shadow-black/50'}`}>
           {gameType === 'slots' && <SlotsGame {...gameProps} />}
           {gameType === 'epic-slots' && <EpicSlotsGame {...gameProps} />}
           {gameType === 'roulette' && <RouletteGame {...gameProps} />}
