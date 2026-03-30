@@ -40,7 +40,7 @@ export function GamePage() {
   const gameType = type as GameType
   const { room, loading: roomLoading, averageLuck, joinRoom, leaveRoom, placeBet, updatePlayerStatus } = useMultiplayerRoom(gameType, roomId)
 
-  if (!profile || !['slots', 'roulette', 'blackjack', 'crash', 'mines', 'poker'].includes(gameType)) {
+  if (!profile || !['slots', 'epic-slots', 'roulette', 'blackjack', 'crash', 'mines', 'poker'].includes(gameType)) {
     return <div className="min-h-screen flex items-center justify-center"><p>Игра не найдена</p></div>
   }
 
