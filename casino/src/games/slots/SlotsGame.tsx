@@ -29,73 +29,72 @@ function getWeightedSymbol(luck: number): string {
   return SYMBOLS[0]
 }
 
-function Reel({ symbols, spinning, finalSymbol, delay, onStop }: {
-  symbols: string[]; spinning: boolean; finalSymbol: string; delay: number; onStop: () => void
+function Reel({ spinning, finalSymbol, delay, onStop }: {
+  spinning: boolean; finalSymbol: string; delay: number; onStop: () => void
 }) {
-  const [displaySymbols, setDisplaySymbols] = useState<string[]>([symbols[0], symbols[1], symbols[2]])
   const [internalSpinning, setInternalSpinning] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [isStopping, setIsStopping] = useState(false)
+  
+  // Мы будем анимировать "ленту" значков, где наш целевой значок в центре
+  const [strip, setStrip] = useState<string[]>(Array(10).fill('?').map(() => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]))
 
   useEffect(() => {
     if (spinning) {
       setInternalSpinning(true)
-      let tick = 0
-      intervalRef.current = setInterval(() => {
-        tick++
-        if (tick % 3 === 0) sounds.slotTick()
-        setDisplaySymbols([
-          SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
-          SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
-          SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
-        ])
-      }, 50)
+      setIsStopping(false)
+      
+      // Генерируем длинную ленту, в конце которой будет наш заветный символ
+      const newStrip = Array(20).fill('?').map(() => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)])
+      // Наш финальный символ будет на 18-й позиции (чтобы после него еще было пару значков для эффекта)
+      newStrip[17] = finalSymbol
+      setStrip(newStrip)
 
-      timeoutRef.current = setTimeout(() => {
-        if (intervalRef.current) clearInterval(intervalRef.current)
-        const top = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
-        const bottom = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
-        setDisplaySymbols([top, finalSymbol, bottom])
-        setInternalSpinning(false) // Останавливаем анимацию этого конкретного барабана
+      const stopTimeout = setTimeout(() => {
+        setIsStopping(true)
+        setInternalSpinning(false)
         sounds.slotStop()
-        onStop()
-      }, 1000 + delay)
-    } else {
-      setInternalSpinning(false)
-    }
+        setTimeout(onStop, 600) // Сообщаем об остановке после завершения анимации
+      }, 1500 + delay)
 
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      return () => clearTimeout(stopTimeout)
     }
   }, [spinning, finalSymbol, delay, onStop])
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 shadow-[inset_0_4px_24px_rgba(0,0,0,0.6)]">
-      <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/80 z-20 pointer-events-none" />
+    <div className="relative w-28 h-28 sm:w-36 sm:h-36 overflow-hidden rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 shadow-[inner_0_4px_24px_rgba(0,0,0,0.6)]">
+      {/* Боковые тени/градиент для глубины */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-transparent to-black/90 z-20 pointer-events-none" />
       
-      {displaySymbols.map((sym, i) => (
-        <motion.div
-          key={i}
-          animate={internalSpinning ? { 
-            y: [0, -20, 0], 
-            scaleY: [1, 1.3, 1],
-            opacity: [0.6, 1, 0.6],
-            filter: ['blur(0px)', 'blur(4px)', 'blur(0px)']
-          } : { 
-            y: 0, 
-            scaleY: 1, 
-            opacity: 1,
-            filter: 'blur(0px)'
-          }}
-          transition={internalSpinning ? { duration: 0.1, repeat: Infinity, ease: 'linear' } : { type: 'spring', damping: 12, stiffness: 200 }}
-          className={`w-28 h-28 sm:w-36 sm:h-36 flex items-center justify-center text-5xl sm:text-6xl ${
-            i === 1 ? 'relative z-10 drop-shadow-[0_0_15px_rgba(255,215,0,0.4)]' : 'opacity-30 scale-90'
-          }`}
-        >
-          {sym}
-        </motion.div>
-      ))}
+      <motion.div
+        animate={internalSpinning ? {
+          y: [0, -2000],
+          transition: { 
+            duration: 1.5, 
+            ease: "linear", 
+            repeat: Infinity 
+          }
+        } : isStopping ? {
+          y: -17 * (typeof window !== 'undefined' && window.innerWidth < 640 ? 112 : 144) + (typeof window !== 'undefined' && window.innerWidth < 640 ? 112 : 144), 
+          transition: { 
+            type: "spring", 
+            damping: 15, 
+            stiffness: 70, 
+            mass: 0.8
+          }
+        } : { y: 0 }}
+        className="flex flex-col items-center"
+      >
+        {strip.map((sym, i) => (
+          <div 
+            key={i} 
+            className="w-28 h-28 sm:w-36 h-36 flex items-center justify-center text-5xl sm:text-6xl select-none"
+          >
+            <span className={i === 17 ? 'drop-shadow-[0_0_15px_rgba(255,215,0,0.6)]' : 'opacity-40 grayscale-[0.5]'}>
+              {sym}
+            </span>
+          </div>
+        ))}
+      </motion.div>
     </div>
   )
 }
@@ -104,6 +103,7 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
   const [spinning, setSpinning] = useState(false)
   const [isAuto, setIsAuto] = useState(false)
   const [finalSymbols, setFinalSymbols] = useState<string[]>(['🍒', '💎', '🍒'])
+  const finalSymbolsRef = useRef<string[]>(['🍒', '💎', '🍒'])
   const [stoppedReels, setStoppedReels] = useState(0)
   const [lastWin, setLastWin] = useState<number | null>(null)
   const [showWin, setShowWin] = useState(false)
@@ -137,7 +137,8 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
     }
 
     setFinalSymbols(finals)
-  }, [bet, balance, spinning, luck, isAuto])
+    finalSymbolsRef.current = finals
+  }, [bet, balance, spinning, luck, isAuto, takeBet])
 
   useEffect(() => {
     if (isAuto && !spinning && bet <= balance) {
@@ -151,40 +152,34 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
   const handleReelStop = useCallback(() => {
     setStoppedReels(prev => {
       const next = prev + 1
-      if (next >= 3 && !resultProcessed.current) {
-        resultProcessed.current = true
-
-        const middle = finalSymbols
+      if (next === 3) {
+        const middle = finalSymbolsRef.current
         const allSame = middle[0] === middle[1] && middle[1] === middle[2]
-        const twoSame = middle[0] === middle[1] || middle[1] === middle[2]
+        const twoSame = middle[0] === middle[1] || middle[1] === middle[2] || middle[0] === middle[2]
 
-        let result: GameResult = 'lose'
         let payout = 0
+        if (allSame) payout = bet * (PAYOUTS[middle[0]] || 2)
+        else if (twoSame) payout = Math.floor(bet * 1.5)
 
-        if (allSame) {
-          const mult = PAYOUTS[middle[0]] || 2
-          payout = bet * mult
-          result = 'win'
-        } else if (twoSame) {
-          payout = Math.floor(bet * 1.5)
-          result = 'win'
-        }
-
-        if (result === 'win') {
-          setLastWin(payout)
-          setTimeout(() => setShowWin(true), 300)
-          if (allSame) sounds.bigWin()
-          else sounds.win()
-        } else {
-          sounds.lose()
-        }
-
-        onResult(result, payout, { reels: middle, allSame, twoSame })
-        setTimeout(() => setSpinning(false), 100)
+        const result: GameResult = payout > 0 ? 'win' : 'loss'
+        
+        // Показываем результат после небольшой паузы
+        setTimeout(() => {
+          if (payout > 0) {
+            setLastWin(payout)
+            setShowWin(true)
+            if (allSame) sounds.bigWin()
+            else sounds.win()
+          } else {
+            sounds.lose()
+          }
+          onResult(result, payout, { reels: middle, allSame, twoSame })
+          setSpinning(false)
+        }, 300)
       }
       return next
     })
-  }, [finalSymbols, bet, onResult])
+  }, [bet, onResult])
 
   return (
     <div className="p-8 flex flex-col items-center justify-center min-h-[600px] w-full relative z-0">
@@ -216,10 +211,9 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
             {[0, 1, 2].map(i => (
               <Reel
                 key={i}
-                symbols={[SYMBOLS[i], SYMBOLS[(i+1)%6], SYMBOLS[(i+2)%6]]}
                 spinning={spinning}
                 finalSymbol={finalSymbols[i]}
-                delay={i * 450}
+                delay={i * 800} // Увеличиваем задержку для эффектности
                 onStop={handleReelStop}
               />
             ))}
