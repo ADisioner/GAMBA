@@ -31,7 +31,8 @@ const DEFAULT_SETTINGS: GlobalSettings = {
   adminNickname: ADMIN_NICKNAME,
   gamesConfig: {
     slots: { enabled: true, order: 1, name: 'Golden Slots', description: 'Классические слоты', minBet: 10, maxBet: 5000 },
-    roulette: { enabled: true, order: 2, name: 'Рулетка', description: 'Европейская рулетка', minBet: 10, maxBet: 10000 },
+    'epic-slots': { enabled: true, order: 2, name: 'Epic Slots', description: 'Эпичные 5-барабанные слоты', minBet: 20, maxBet: 10000 },
+    roulette: { enabled: true, order: 3, name: 'Рулетка', description: 'Европейская рулетка', minBet: 10, maxBet: 10000 },
     blackjack: { enabled: true, order: 3, name: 'Блэкджек', description: 'Обыграй дилера', minBet: 25, maxBet: 5000 },
     crash: { enabled: true, order: 4, name: 'Crash', description: 'Успей забрать', minBet: 10, maxBet: 10000 },
     mines: { enabled: true, order: 5, name: 'Mines', description: 'Найди безопасные клетки', minBet: 10, maxBet: 5000 },

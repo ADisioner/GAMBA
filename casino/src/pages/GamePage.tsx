@@ -12,6 +12,7 @@ import { updateLuck } from '@/lib/luck'
 import { useMultiplayerRoom } from '@/hooks/useMultiplayerRoom'
 import type { GameType, GameResult } from '@/types'
 import { SlotsGame } from '@/games/slots/SlotsGame'
+import { EpicSlotsGame } from '@/games/slots/epic/EpicSlotsGame'
 import { RouletteGame } from '@/games/roulette/RouletteGame'
 import { BlackjackGame } from '@/games/blackjack/BlackjackGame'
 import { CrashGame } from '@/games/crash/CrashGame'
@@ -20,6 +21,7 @@ import { PokerGame } from '@/games/poker/PokerGame'
 
 const GAME_TITLES: Record<GameType, string> = {
   slots: 'Golden Slots',
+  'epic-slots': 'Эпичные Слоты',
   roulette: 'Рулетка',
   blackjack: 'Блэкджек',
   crash: 'Crash',
@@ -250,6 +252,7 @@ export function GamePage() {
 
         <div className={`rounded-3xl ${isRoulette ? 'bg-transparent border-none' : 'border border-gold/20 bg-card/50 backdrop-blur-sm overflow-hidden shadow-2xl shadow-black/50'}`}>
           {gameType === 'slots' && <SlotsGame {...gameProps} />}
+          {gameType === 'epic-slots' && <EpicSlotsGame {...gameProps} />}
           {gameType === 'roulette' && <RouletteGame {...gameProps} />}
           {gameType === 'blackjack' && <BlackjackGame {...gameProps} />}
           {gameType === 'crash' && <CrashGame {...gameProps} />}
