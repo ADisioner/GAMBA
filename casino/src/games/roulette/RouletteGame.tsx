@@ -139,7 +139,7 @@ function RouletteWheel({ spinning, winNumber, onSpinEnd }: {
 
       {/* Колесо */}
       <motion.div
-        className="w-full h-full rounded-full border-[6px] border-[#2A2A1A] ring-4 ring-gold/40 shadow-[0_0_50px_rgba(212,175,55,0.3),inset_0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden relative bg-black/80"
+        className="w-full h-full rounded-full ring-4 ring-gold/40 shadow-[0_0_50px_rgba(212,175,55,0.3),inset_0_0_0_6px_#2a2a1a,inset_0_20px_50px_rgba(0,0,0,0.9)] overflow-hidden relative bg-black/80"
         animate={{ rotate: rotation }}
         transition={{
           duration: spinning ? 5 : 0,
@@ -463,7 +463,7 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
       
       {/* Левая колонка: Колесо */}
       <div className="w-full lg:w-auto flex flex-col items-center justify-start xl:sticky xl:top-24 order-1 lg:order-1 shrink-0 z-10">
-        <div className="mb-4 lg:mb-0 scale-90 sm:scale-100 lg:scale-110 xl:scale-125 origin-top transition-transform duration-500">
+        <div className="mb-8 lg:mb-0 scale-110 sm:scale-125 lg:scale-150 xl:scale-[1.65] origin-top transition-transform duration-500">
           <RouletteWheel
             spinning={spinning}
             winNumber={winNumber ?? 0}
@@ -537,12 +537,12 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
         </div>
 
         {/* Контролы */}
-        <div className="mt-8 flex items-center gap-4 w-full">
+        <div className="mt-8 flex items-center gap-3 w-full">
           <Button
             variant="outline"
             onClick={clearBets}
             disabled={spinning || showResult || bets.length === 0}
-            className="flex-1 bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] h-16 rounded-2xl font-bold uppercase tracking-wider backdrop-blur-md transition-all duration-300 active:scale-95"
+            className="flex-1 bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] h-8 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md transition-all duration-300 active:scale-95"
           >
             Очистить
           </Button>
@@ -551,17 +551,17 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
             variant="outline"
             onClick={repeatBets}
             disabled={spinning || showResult || lastBetsRef.current.length === 0}
-            className="flex-1 bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] h-16 rounded-2xl font-bold uppercase tracking-wider backdrop-blur-md transition-all duration-300 active:scale-95"
+            className="flex-1 bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:shadow-[0_0_10px_rgba(255,255,255,0.1)] h-8 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md transition-all duration-300 active:scale-95"
           >
             Повторить
           </Button>
 
           <div className="flex-[2] relative group">
-            <div className={`absolute -inset-1 bg-gradient-to-r from-gold-light via-gold to-gold-dark blur-lg rounded-[2rem] transition-all duration-500 opacity-60 group-hover:opacity-100 ${spinning ? '!opacity-0' : ''}`} />
+            <div className={`absolute -inset-1 bg-gradient-to-r from-gold-light via-gold to-gold-dark blur-md rounded-xl transition-all duration-500 opacity-60 group-hover:opacity-100 ${spinning ? '!opacity-0' : ''}`} />
             <Button
               onClick={spin}
               disabled={spinning || showResult || bets.length === 0 || totalBet > balance}
-              className={`relative w-full h-16 rounded-2xl text-xl font-black tracking-widest transition-all duration-300 border border-white/10 overflow-hidden ${
+              className={`relative w-full h-10 sm:h-12 rounded-lg text-sm sm:text-base font-black tracking-widest transition-all duration-300 border border-white/10 overflow-hidden ${
                 spinning
                   ? 'bg-gray-800/80 text-white/40 cursor-not-allowed border-transparent'
                   : 'bg-gradient-to-br from-[#FFDF00] via-[#D4AF37] to-[#996515] text-[#1A1A1A] hover:brightness-110 active:scale-[0.98]'
@@ -573,9 +573,9 @@ export function RouletteGame({ bet, luck, houseEdge, balance, onResult, takeBet 
               )}
               
               {spinning ? (
-                <span className="flex items-center gap-3">
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} className="w-6 h-6 border-3 border-white/20 border-t-white rounded-full" />
-                  КРУТИТСЯ...
+                <span className="flex items-center gap-2">
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full" />
+                  КРУТИТСЯ
                 </span>
               ) : (
                 `КРУТИТЬ${totalBet > 0 ? ` (${totalBet.toLocaleString()})` : ''}`
