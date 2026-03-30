@@ -280,6 +280,7 @@ export function MultiplayerRouletteGame({ bet, luck, houseEdge, balance, onResul
   const [showResult, setShowResult] = useState(false)
   const [selectedChip, setSelectedChip] = useState(10)
   const [lastWin, setLastWin] = useState<number | null>(null)
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const totalBet = localBets.reduce((s, b) => s + b.amount, 0)
   const lastBetsRef = useRef<PlacedBet[]>([])
 
@@ -301,6 +302,26 @@ export function MultiplayerRouletteGame({ bet, luck, houseEdge, balance, onResul
       }
     }
   }, [room?.status, room?.winNumber])
+
+  // Логика таймера и автозапуска
+  useEffect(() => {
+    if (!room || room.status !== 'betting' || !room.timer) {
+      setTimeLeft(null)
+      return
+    }
+
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((room.timer! - Date.now()) / 1000))
+      setTimeLeft(remaining)
+
+      if (remaining <= 0 && isHost && !spinning) {
+        clearInterval(interval)
+        handleSpinStart()
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [room?.timer, room?.status, isHost, spinning])
 
   const handlePlaceBet = useCallback(async (type: BetType) => {
     if (spinning || !room || (room.status !== 'waiting' && room.status !== 'betting')) return
@@ -328,7 +349,16 @@ export function MultiplayerRouletteGame({ bet, luck, houseEdge, balance, onResul
     })
 
     if (isHost && room.status === 'waiting') {
-      update(ref(rtdb, `rooms/roulette/${room.id}`), { status: 'betting' })
+      update(ref(rtdb, `rooms/roulette/${room.id}`), { 
+        status: 'betting',
+        timer: Date.now() + 30000 
+      })
+    } else if (room.status === 'waiting') {
+      // Если не хост, тоже инициируем смену статуса комнаты, если это первая ставка
+      update(ref(rtdb, `rooms/roulette/${room.id}`), { 
+        status: 'betting',
+        timer: Date.now() + 30000 
+      })
     }
     sounds.bet()
   }, [spinning, room, localBets, selectedChip, balance, takeBet, profile, isHost])
@@ -362,6 +392,13 @@ export function MultiplayerRouletteGame({ bet, luck, houseEdge, balance, onResul
       bet: total,
       status: 'betting'
     })
+
+    if (room.status === 'waiting') {
+      update(ref(rtdb, `rooms/roulette/${room.id}`), { 
+        status: 'betting',
+        timer: Date.now() + 30000 
+      })
+    }
     toast.success('Ставки повторены')
   }, [spinning, balance, room, profile, takeBet])
 
@@ -437,8 +474,21 @@ export function MultiplayerRouletteGame({ bet, luck, houseEdge, balance, onResul
       <div className="flex-1 flex flex-col gap-4">
         <div className="h-20 flex items-center justify-between px-8 bg-marble/10 rounded-3xl border border-gold/10 backdrop-blur-md relative overflow-hidden">
            <div className="flex items-center gap-4 z-10">
-              {room?.status === 'waiting' && <p className="text-gold font-serif font-bold animate-pulse text-lg">Ожидание начала...</p>}
-              {room?.status === 'betting' && <div className="flex items-center gap-3 text-blue-400"><Clock className="w-5 h-5 animate-spin" /><span className="font-black uppercase tracking-widest">Ставки открыты</span></div>}
+              {room?.status === 'waiting' && <p className="text-gold font-serif font-bold animate-pulse text-lg">Ожидание ставок...</p>}
+              {room?.status === 'betting' && (
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 text-blue-400">
+                    <Clock className="w-5 h-5 animate-spin" />
+                    <span className="font-black uppercase tracking-widest">Ставки открыты</span>
+                  </div>
+                  {timeLeft !== null && (
+                    <div className="flex items-center gap-2 bg-blue-500/20 px-3 py-1 rounded-full border border-blue-400/30">
+                       <span className="text-[10px] font-bold text-blue-300 uppercase">Автостарт через:</span>
+                       <span className="text-lg font-black text-white tabular-nums">{timeLeft}с</span>
+                    </div>
+                  )}
+                </div>
+              )}
               {room?.status === 'playing' && <p className="text-emerald-400 font-black animate-bounce text-xl uppercase tracking-tighter">Вращение!</p>}
            </div>
            
