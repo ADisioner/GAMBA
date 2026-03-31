@@ -117,22 +117,23 @@ export function BlackjackGame({ bet, balance, luck, onResult, takeBet }: Props) 
     sounds.cardDeal()
     const newDeck = createDeck()
     
-    // Система удачи: при luck=0 шанс выигрыша игрока 40%.
-    // Мы можем реализовать это через "подготовку" руки.
-    // Шанс выигрыша увеличивается от удачи.
-    const winChance = applyLuck(0.40, luck)
-    const shouldWin = Math.random() < winChance
-
     let pHand: CardData[] = []
     let dHand: CardData[] = []
 
-    if (shouldWin && Math.random() < 0.2) {
-      // Подкладываем Блэкджек игроку в 20% случаев выигрыша
-      pHand = [
-        { suit: SUITS[Math.floor(Math.random()*4)], value: 'A', rank: 11 },
-        { suit: SUITS[Math.floor(Math.random()*4)], value: VALUES[Math.floor(Math.random()*3) + 9], rank: 10 }
-      ]
-      dHand = [newDeck.pop()!, newDeck.pop()!]
+    // Подкрутка выдачи Блэкджека только при luck > 0
+    if (luck > 0) {
+      const winChance = applyLuck(0, luck)
+      if (Math.random() < winChance && Math.random() < 0.2) {
+        // Подкладываем Блэкджек игроку
+        pHand = [
+          { suit: SUITS[Math.floor(Math.random()*4)], value: 'A', rank: 11 },
+          { suit: SUITS[Math.floor(Math.random()*4)], value: VALUES[Math.floor(Math.random()*3) + 9], rank: 10 }
+        ]
+        dHand = [newDeck.pop()!, newDeck.pop()!]
+      } else {
+        pHand = [newDeck.pop()!, newDeck.pop()!]
+        dHand = [newDeck.pop()!, newDeck.pop()!]
+      }
     } else {
       pHand = [newDeck.pop()!, newDeck.pop()!]
       dHand = [newDeck.pop()!, newDeck.pop()!]

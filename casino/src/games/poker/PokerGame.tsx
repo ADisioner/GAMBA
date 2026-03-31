@@ -153,15 +153,17 @@ export function PokerGame({ bet, luck, houseEdge, balance, onResult, takeBet, mu
     let d = createDeck()
     const newHand: Card[] = []
     
-    // Подкрутка на первую раздачу (увеличивает шанс хороших карт)
-    const dealChance = applyLuck(0.05, luck)
-    if (Math.random() < dealChance) {
-      // Пытаемся дать сразу Пару или Тройку высоких карт
-      const highValue = VALUES[Math.floor(Math.random() * (VALUES.length - 8)) + 8] // от 9 до A
-      const matching = d.filter(c => c.value === highValue)
-      if (matching.length >= 3) {
-        newHand.push(matching[0], matching[1], matching[2])
-        d = d.filter(c => !newHand.includes(c))
+    // Подкрутка на первую раздачу только если luck > 0
+    if (luck > 0) {
+      const dealChance = applyLuck(0, luck)
+      if (Math.random() < dealChance) {
+        // Пытаемся дать сразу Пару или Тройку высоких карт
+        const highValue = VALUES[Math.floor(Math.random() * (VALUES.length - 8)) + 8] // от 9 до A
+        const matching = d.filter(c => c.value === highValue)
+        if (matching.length >= 3) {
+          newHand.push(matching[0], matching[1], matching[2])
+          d = d.filter(c => !newHand.includes(c))
+        }
       }
     }
     

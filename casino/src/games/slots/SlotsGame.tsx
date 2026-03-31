@@ -138,10 +138,13 @@ export function SlotsGame({ bet, luck, houseEdge, balance, onResult, takeBet }: 
     const finals: string[] = []
     for (let i = 0; i < 3; i++) finals.push(getWeightedSymbol(currentLuck))
 
-    const winChance = applyLuck(0.25, currentLuck)
-    if (Math.random() < winChance) {
-      const sym = getWeightedSymbol(currentLuck * 1.1)
-      finals[0] = sym; finals[1] = sym; finals[2] = sym
+    // Выигрыш форсируется только при положительной удаче
+    if (currentLuck > 0) {
+      const winChance = applyLuck(0, currentLuck) // 0% шанс при обычной игре, растет только от luck
+      if (Math.random() < winChance) {
+        const sym = getWeightedSymbol(currentLuck * 1.1)
+        finals[0] = sym; finals[1] = sym; finals[2] = sym
+      }
     }
 
     setFinalSymbols(finals)
