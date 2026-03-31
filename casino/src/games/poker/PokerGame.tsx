@@ -292,7 +292,7 @@ export function PokerGame({ bet, luck, houseEdge, balance, onResult, takeBet, mu
                            <img src={player.avatarUrl} className="w-5 h-5 rounded-full border border-gold/40" />
                            <span className="text-[9px] font-black text-foreground truncate max-w-[50px] uppercase tracking-tighter">{player.nickname}</span>
                         </div>
-                        <span className="text-[10px] text-neon-green font-mono mt-0.5">${(player.bet || 0).toLocaleString()}</span>
+                        <span className="text-[10px] text-neon-green font-mono mt-0.5">{formatBalance(player.bet || 0)}</span>
                      </div>
                    ) : (
                      <button onClick={() => isMulti && handleJoinSeat(seatNum)} className="w-12 h-12 rounded-full border-2 border-dashed border-gold/10 hover:border-gold/40 hover:bg-gold/5 flex flex-col items-center justify-center group transition-all">
@@ -327,7 +327,7 @@ export function PokerGame({ bet, luck, houseEdge, balance, onResult, takeBet, mu
                 <div className={`text-4xl font-serif font-black uppercase tracking-widest drop-shadow-lg ${lastWin ? 'text-gold text-glow-gold' : 'text-slate-400 opacity-50'}`}>
                   {resultMessage}
                 </div>
-                {lastWin && <div className="text-2xl font-black text-neon-green mt-2 animate-bounce">+${lastWin.toLocaleString()}</div>}
+                {lastWin && <div className="text-2xl font-black text-neon-green mt-2 animate-bounce">+{formatBalance(lastWin)}</div>}
             </motion.div>
           )}
         </AnimatePresence>
@@ -365,7 +365,7 @@ export function PokerGame({ bet, luck, houseEdge, balance, onResult, takeBet, mu
                   {room.status === 'waiting' && myPlayer?.status === 'ready' && (
                     <Button onClick={() => multiplayer.placeBet(bet)} size="xl"
                       className="w-64 bg-gold hover:bg-gold-light text-velvet-dark font-black py-8 shadow-glow-gold rounded-2xl text-xl animate-pulse">
-                      ПОСТАВИТЬ {bet}$
+                      ПОСТАВИТЬ {formatBalance(bet)}
                     </Button>
                   )}
                   

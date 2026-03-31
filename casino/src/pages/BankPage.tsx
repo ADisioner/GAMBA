@@ -113,7 +113,7 @@ export function BankPage() {
     if (!profile) return
 
     if (amt > 100000) {
-      toast.error('Максимальная сумма кредита $100,000')
+      toast.error('Максимальный кредит: 🪙100,000')
       return
     }
 
@@ -147,7 +147,7 @@ export function BankPage() {
     
     const amountToPay = profile.bankDebt
     if (profile.balance < amountToPay) {
-      toast.error('Недостаточно средств для полного погашения')
+      toast.error('Недостаточно фишек для полного погашения')
       return
     }
 
@@ -179,7 +179,7 @@ export function BankPage() {
     if (!profile) return
 
     if (target.toLowerCase() === profile.nickname.toLowerCase()) {
-      toast.error('Нельзя отправить деньги самому себе')
+      toast.error('Нельзя отправить фишки самому себе')
       return
     }
 
@@ -262,7 +262,7 @@ export function BankPage() {
           
           <div className="flex gap-4">
             <Card className="bg-marble/30 backdrop-blur-md p-4 border-gold/20 min-w-[160px]">
-              <p className="text-xs text-muted-foreground uppercase mb-1">Ваш баланс</p>
+              <p className="text-xs text-muted-foreground uppercase mb-1">Ваши фишки</p>
               <p className="text-xl font-bold text-gold-light">{formatDynamicBalance(profile.balance)}</p>
             </Card>
             <Card className="bg-red-500/5 backdrop-blur-md p-4 border-red-500/20 min-w-[160px]">
@@ -346,7 +346,7 @@ export function BankPage() {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} key="transfer">
                   <Card className="p-8 border-gold/20 bg-marble-light/20 backdrop-blur-xl max-w-xl mx-auto">
                     <h2 className="font-serif text-2xl font-bold mb-6 flex items-center gap-2">
-                       <ArrowUpRight className="w-6 h-6 text-gold" /> Перевод средств
+                       <ArrowUpRight className="w-6 h-6 text-gold" /> Перевод фишек
                     </h2>
                     <div className="space-y-6">
                       <div className="space-y-2">
@@ -359,7 +359,7 @@ export function BankPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Сумма к отправке</label>
+                        <label className="text-sm font-medium text-muted-foreground">Количество фишек</label>
                         <div className="relative">
                           <Input 
                             placeholder="0" 
@@ -388,7 +388,7 @@ export function BankPage() {
                         </p>
                       </div>
                       <Button className="w-full h-14 text-lg font-serif bg-gold hover:bg-gold-dark text-velvet-dark shadow-glow-gold" disabled={loading} onClick={handleTransfer}>
-                        {loading ? 'Проверка...' : 'Отправить золото'}
+                        {loading ? 'Проверка...' : 'Отправить фишки'}
                       </Button>
                     </div>
                   </Card>
@@ -399,11 +399,11 @@ export function BankPage() {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} key="deposit">
                   <Card className="p-8 border-gold/20 bg-marble-light/20 backdrop-blur-xl">
                     <h2 className="font-serif text-2xl font-bold mb-6 flex items-center gap-2">
-                       <Wallet className="w-6 h-6 text-gold" /> Пополнение баланса
+                       <Wallet className="w-6 h-6 text-gold" /> Пополнить фишки
                     </h2>
                     <div className="space-y-6">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Введите сумму (Золото)</label>
+                        <label className="text-sm font-medium text-muted-foreground">Количество фишек</label>
                         <Input 
                           placeholder="0" 
                           type="number" 
@@ -440,8 +440,8 @@ export function BankPage() {
                         <h3 className="font-bold">Микрозаем</h3>
                       </div>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Срочные средства под **{settings?.bankCreditRate || 80}%**. <br />
-                        Пример: берете $1000, отдаете ${1000 + Math.floor(1000 * ((settings?.bankCreditRate || 80) / 100))}.
+                        Срочные фишки под **{settings?.bankCreditRate || 80}%**. <br />
+                        Пример: берёте 🪙1,000, отдаёте 🪙{1000 + Math.floor(1000 * ((settings?.bankCreditRate || 80) / 100))}.
                       </p>
                       <Input 
                         placeholder="Сумма..." 

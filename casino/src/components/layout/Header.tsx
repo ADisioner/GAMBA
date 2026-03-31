@@ -109,7 +109,7 @@ export function Header() {
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-marble-light/50 border border-gold/30 hover:border-gold/50 transition-all cursor-pointer"
               >
                 <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
-                  <span className="text-[10px] font-bold text-primary-foreground">$</span>
+                  <span className="text-[10px] font-bold text-primary-foreground">🪙</span>
                 </div>
                 <span className="text-sm font-semibold text-gold-light">{formatDynamicBalance(profile.balance)}</span>
               </button>

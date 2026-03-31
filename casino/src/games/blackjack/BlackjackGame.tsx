@@ -103,7 +103,7 @@ export function BlackjackGame({ bet, balance, luck, onResult, takeBet }: Props) 
 
   const startNewGame = async () => {
     if (balance < bet) {
-      toast.error('Недостаточно средств для ставки')
+      toast.error('Недостаточно фишек для ставки')
       return
     }
     
@@ -186,7 +186,7 @@ export function BlackjackGame({ bet, balance, luck, onResult, takeBet }: Props) 
   const doubleDown = async () => {
     if (gameState !== 'playing' || isProcessing || playerHand.length !== 2) return
     if (balance < currentBet) {
-      toast.error('Недостаточно баланса для удвоения')
+      toast.error('Недостаточно фишек для удвоения')
       return
     }
 

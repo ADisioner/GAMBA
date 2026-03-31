@@ -91,7 +91,7 @@ export function GamePage() {
     }
 
     if (profile.balance < amount) {
-      toast.error('Недостаточно средств')
+      toast.error('Недостаточно фишек')
       return false
     }
     

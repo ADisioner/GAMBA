@@ -25,7 +25,7 @@ export function ProfilePage() {
   }
 
   const stats = [
-    { label: 'Баланс', value: formatCompactBalance(profile.balance), icon: <Trophy className="w-5 h-5 text-gold" /> },
+    { label: 'Фишки', value: formatCompactBalance(profile.balance), icon: <Trophy className="w-5 h-5 text-gold" /> },
     { label: 'Всего игр', value: profile.totalGamesPlayed.toString(), icon: <History className="w-5 h-5 text-gold" /> },
     { label: 'Выиграно', value: formatCompactBalance(profile.totalWon), icon: <TrendingUp className="w-5 h-5 text-neon-green" /> },  
     { label: 'Проиграно', value: formatCompactBalance(profile.totalLost), icon: <TrendingDown className="w-5 h-5 text-neon-red" /> },

@@ -6,19 +6,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-/** Форматирует число как баланс: 50000 → "$50,000" */
+/** Форматирует число как баланс фишек: 50000 → "🪙50,000" */
 export function formatBalance(amount: number): string {
-  return '$' + amount.toLocaleString('en-US')
+  return '🪙' + amount.toLocaleString('en-US')
 }
 
-/** Форматирует число в компактный вид: 1500000 → "$1.5 млн" */
+/** Форматирует число в компактный вид: 1500000 → "🪙1.5M" */
 export function formatCompactBalance(amount: number): string {
   const formatter = new Intl.NumberFormat('ru-RU', {
     notation: 'compact',
     compactDisplay: 'short',
     maximumFractionDigits: 1,
   })
-  return '$' + formatter.format(amount).replace(' ', ' ') // Заменяем неразрывный пробел
+  return '🪙' + formatter.format(amount).replace('\u00a0', ' ')
 }
 
 /** Динамический формат: полное число до 100 млн, дальше - компактно */

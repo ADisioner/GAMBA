@@ -427,7 +427,7 @@ export function AdminPage() {
                     <tr className="border-b border-gold/20 text-muted-foreground">
                       <th className="text-left py-2 px-3">Ник</th>
                       <th className="text-left py-2 px-3">UID (Internal)</th>
-                      <th className="text-right py-2 px-3">Баланс</th>
+                      <th className="text-right py-2 px-3">🪙 Фишки</th>
                       <th className="text-right py-2 px-3">Luck</th>
                       <th className="text-right py-2 px-3">Игры</th>
                       <th className="text-right py-2 px-3">Выиграно</th>
@@ -614,7 +614,7 @@ export function AdminPage() {
             <CardContent className="space-y-4">
               <div className="grid sm:grid-cols-3 gap-6">
                 <div className="p-4 rounded-xl bg-marble/20 border border-gold/10">
-                  <p className="text-[10px] uppercase text-muted-foreground mb-1 font-bold">Стартовый баланс</p>
+                  <p className="text-[10px] uppercase text-muted-foreground mb-1 font-bold">Стартовые фишки</p>
                   <p className="text-2xl font-serif text-gold">{formatBalance(settings?.startingBalance || 0)}</p>
                 </div>
                 <div className="p-4 rounded-xl bg-marble/20 border border-gold/10">
@@ -690,7 +690,7 @@ export function AdminPage() {
                   <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                     <div>
                       <h4 className="font-bold text-foreground">Сбросить все игровые данные</h4>
-                      <p className="text-sm text-muted-foreground mt-1">Очистка всех игровых счетчиков, тоталов и личной статистики игроков (Won/Lost/Games). Баланс затронут не будет.</p>
+                      <p className="text-sm text-muted-foreground mt-1">Очистка всех игровых счетчиков, тоталов и личной статистики игроков (Won/Lost/Games). Фишки затронуты не будут.</p>
                     </div>
                     <Button variant="destructive" className="bg-neon-red hover:bg-red-600 shadow-glow-red font-bold px-8" onClick={resetAllStats}>
                        СБРОСИТЬ ВСЁ
